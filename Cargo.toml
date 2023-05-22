@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "token",
+    "voting",
+    "auction",
+    "conditional-escrow-transfer",
+    "liquidity-swap",
+    "multi-voting",
+    "nft",
+    "zk-second-price-auction",
+    "zk-struct-open",
+    "zk-liquidity-swap",
+    "zk-immediate-open",
+    "zk-voting-simple",
+    "zk-average-salary",
+]
+
+
+[workspace.metadata.zkcompiler]
+url = "https://gitlab.com/api/v4/projects/37549006/packages/maven/com/partisiablockchain/language/zkcompiler/3.82.0/zkcompiler-3.82.0-jar-with-dependencies.jar"
+
+[workspace.dependencies]
+pbc_contract_common = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+pbc_contract_codegen = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+pbc_traits = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+pbc_lib = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+read_write_rpc_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+read_write_state_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+create_type_spec_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
+pbc_zk = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }

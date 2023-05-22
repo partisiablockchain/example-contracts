@@ -1,0 +1,31 @@
+[package]
+name = "zk-liquidity-swap"
+version = "1.5.0"
+license = "MIT"
+description = "Example contract for the Partisia Blockchain."
+homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
+repository = "https://gitlab.com/partisiablockchain/language/example-contracts"
+documentation = "https://gitlab.com/partisiablockchain/language/example-contracts"
+readme = "README.md"
+edition = "2021"
+
+[features]
+abi = ["pbc_contract_common/abi", "pbc_contract_codegen/abi", "pbc_traits/abi", "create_type_spec_derive/abi"]
+perform_calls = [] # Allows validating token balances with token contracts. See `src/contract.rs`
+
+[lib]
+path = "src/contract.rs"
+crate-type = ['cdylib']
+
+[package.metadata.zk]
+zk-compute-path = "src/zk_compute.rs"
+
+[dependencies]
+pbc_contract_common = { workspace = true }
+pbc_traits = { workspace = true }
+pbc_lib = { workspace = true }
+read_write_rpc_derive = { workspace = true }
+read_write_state_derive = { workspace = true }
+create_type_spec_derive = { workspace = true }
+pbc_contract_codegen = { workspace = true }
+
