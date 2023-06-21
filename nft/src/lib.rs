@@ -3,6 +3,8 @@
 //! The contract provides basic functionality to track and transfer NFTs.
 //!
 //! The contract works using a mint method for creating new bindings of NFTs to accounts.
+//! The mint method associates the minted NFT with an URI, which can be used to connect the NFT
+//! to an external website/resource, e.g. IPFS.
 //!
 //! An NFT is identified via an u128 tokenID.
 //!
@@ -16,48 +18,50 @@
 //! An operator is approved to manage all NFTs owned by the owner, this includes setting approval on each
 //! token and transfer.
 //!
+//! The contract follows the MPC-721 NFT Standard Contract Interface with URI extension
+//! <https://partisiablockchain.gitlab.io/documentation/smart-contracts/integration/mpc-721-nft-contract.html>
 //!
-//! The contract is inspired by the ERC721 NFT contract with extensions for Metadata and Burnable\
+//! The MPC-721 interface is in turn inspired by the ERC721 NFT contract with extensions for Metadata and Burnable\
 //! <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md>
 #![allow(unused_variables)]
 
 #[macro_use]
 extern crate pbc_contract_codegen;
 
+use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::sorted_vec_map::SortedVecMap;
+use read_write_state_derive::ReadWriteState;
 
-/// Custom struct for the state of the contract.
-///
-/// The "state" attribute is attached.
-///
-/// ### Fields:
-///
-/// *`name`: [`String`], A descriptive name for a collection of NFTs in this contract.
-///
-/// * `symbol`: [`String`], An abbreviated name for NFTs in this contract.
-///
-/// * `contract_owner`: [`Address`], the owner of the contract.
-///
-/// * `owners`: [`SortedVecMap<u128, Address>`], mapping from token_id to owner address.
-///
-/// * `token_approvals`: [`SortedVecMap<u128, Option<Address>>`], mapping from token_id to the approved address
-/// who can transfer the token.
-///
-/// * `operator_approvals`: [`SortedVecMap<Address, Vec<Address>>`], mapping from owner to
-/// operator approvals. Operators can transfer and change approvals on all tokens owned by owner.
-///
-/// * `token_uris`: [`SortedVecMap<u128, String>`], mapping for token URIs.
+/// A permission to transfer and approve NFTs given from an NFT owner to a separate address, called an operator.
+#[derive(ReadWriteState, CreateTypeSpec, PartialEq, Copy, Clone)]
+struct OperatorApproval {
+    /// NFT owner.
+    owner: Address,
+    /// Operator of the owner's tokens.
+    operator: Address,
+}
+
+/// State of the contract.
 #[state]
 pub struct NFTContractState {
+    /// Descriptive name for the collection of NFTs in this contract.
     name: String,
+    /// Abbreviated name for NFTs in this contract.
     symbol: String,
-    contract_owner: Address,
+    /// Mapping from token_id to the owner of the token.
     owners: SortedVecMap<u128, Address>,
+    /// Mapping from token_id to the approved address who can transfer the token.
     token_approvals: SortedVecMap<u128, Address>,
-    operator_approvals: SortedVecMap<Address, Vec<Address>>,
-    token_uris: SortedVecMap<u128, String>,
+    /// Containing approved operators of owners. Operators can transfer and change approvals on all tokens owned by owner.
+    operator_approvals: Vec<OperatorApproval>,
+    /// Template which the uri's of the NFTs fit into.
+    uri_template: String,
+    /// Mapping from token_id to the URI of the token.
+    token_uri_details: SortedVecMap<u128, [u8; 16]>,
+    /// Owner of the contract. Is allowed to mint new NFTs.
+    contract_owner: Address,
 }
 
 impl NFTContractState {
@@ -74,7 +78,7 @@ impl NFTContractState {
     pub fn owner_of(&self, token_id: u128) -> Address {
         let owner_opt = self.owners.get(&token_id);
         match owner_opt {
-            None => panic!("ERC721: owner query for nonexistent token"),
+            None => panic!("MPC-721: owner query for nonexistent token"),
             Some(owner) => *owner,
         }
     }
@@ -102,14 +106,10 @@ impl NFTContractState {
     ///
     /// ### Returns:
     ///
-    /// A [`bool`] True if `_operator` is an approved operator for `_owner`, false otherwise.
+    /// A [`bool`] true if `operator` is an approved operator for `owner`, false otherwise.
     pub fn is_approved_for_all(&self, owner: Address, operator: Address) -> bool {
-        let approved_by_owner_opt = self.operator_approvals.get(&owner);
-        if let Some(approved_by_owner) = approved_by_owner_opt {
-            approved_by_owner.contains(&operator)
-        } else {
-            false
-        }
+        let as_operator_approval: OperatorApproval = OperatorApproval { owner, operator };
+        self.operator_approvals.contains(&as_operator_approval)
     }
 
     /// Helper function to check whether a tokenId exists.
@@ -178,7 +178,7 @@ impl NFTContractState {
     /// * `token_id`: [`u128`], The NFT to transfer
     pub fn _transfer(&mut self, from: Address, to: Address, token_id: u128) {
         if self.owner_of(token_id) != from {
-            panic!("ERC721: transfer from incorrect owner")
+            panic!("MPC-721: transfer from incorrect owner")
         } else {
             // clear approvals from the previous owner
             self._approve(None, token_id);
@@ -197,19 +197,27 @@ impl NFTContractState {
 ///
 /// * `symbol`: [`String`], An abbreviated name for NFTs in this contract.
 ///
+/// * `uri_template`: [`String`], Template for uri´s associated with NFTs in this contract.
+///
 /// ### Returns:
 ///
 /// The new state object of type [`NFTContractState`].
 #[init]
-pub fn initialize(ctx: ContractContext, name: String, symbol: String) -> NFTContractState {
+pub fn initialize(
+    ctx: ContractContext,
+    name: String,
+    symbol: String,
+    uri_template: String,
+) -> NFTContractState {
     NFTContractState {
         name,
         symbol,
-        contract_owner: ctx.sender,
         owners: SortedVecMap::new(),
         token_approvals: SortedVecMap::new(),
-        operator_approvals: SortedVecMap::new(),
-        token_uris: SortedVecMap::new(),
+        operator_approvals: vec![],
+        uri_template,
+        token_uri_details: SortedVecMap::new(),
+        contract_owner: ctx.sender,
     }
 }
 
@@ -231,25 +239,23 @@ pub fn initialize(ctx: ContractContext, name: String, symbol: String) -> NFTCont
 /// ### Returns
 ///
 /// The new state object of type [`NFTContractState`] with an updated ledger.
-#[action]
+#[action(shortname = 0x05)]
 pub fn approve(
     ctx: ContractContext,
-    state: NFTContractState,
+    mut state: NFTContractState,
     approved: Option<Address>,
     token_id: u128,
 ) -> NFTContractState {
-    let mut new_state = state;
-    let owner = new_state.owner_of(token_id);
-    if ctx.sender != owner && !new_state.is_approved_for_all(owner, ctx.sender) {
-        panic!("ERC721: approve caller is not owner nor approved for all")
+    let owner = state.owner_of(token_id);
+    if ctx.sender != owner && !state.is_approved_for_all(owner, ctx.sender) {
+        panic!("MPC-721: approve caller is not owner nor authorized operator")
     }
-    new_state._approve(approved, token_id);
-    new_state
+    state._approve(approved, token_id);
+    state
 }
 
-/// Enable or disable approval for a third party ("operator") to manage all of
-/// `ctx.sender`'s assets.
-/// Throws if `operator` == `ctx.sender`.
+/// Enable or disable approval for a third party (operator) to manage all of
+/// `ctx.sender`'s assets. Throws if `operator` == `ctx.sender`.
 ///
 /// ### Parameters:
 ///
@@ -264,37 +270,31 @@ pub fn approve(
 /// ### Returns
 ///
 /// The new state object of type [`NFTContractState`] with an updated ledger.
-#[action]
+#[action(shortname = 0x07)]
 pub fn set_approval_for_all(
     ctx: ContractContext,
-    state: NFTContractState,
+    mut state: NFTContractState,
     operator: Address,
     approved: bool,
 ) -> NFTContractState {
     if operator == ctx.sender {
-        panic!("ERC721: approve to caller")
-    } else {
-        let mut new_state = state;
-
-        if !new_state.operator_approvals.contains_key(&ctx.sender) {
-            new_state.operator_approvals.insert(ctx.sender, Vec::new());
-        }
-
-        let owner_approvals = new_state.operator_approvals.get_mut(&ctx.sender).unwrap();
-        if approved {
-            if !owner_approvals.contains(&operator) {
-                owner_approvals.push(operator);
-            }
-        } else {
-            owner_approvals.retain(|&x| x != operator);
-        }
-        new_state
+        panic!("MPC-721: approve to caller")
     }
+    let operator_approval = OperatorApproval {
+        owner: ctx.sender,
+        operator,
+    };
+    if approved {
+        if !state.operator_approvals.contains(&operator_approval) {
+            state.operator_approvals.push(operator_approval)
+        }
+    } else {
+        state.operator_approvals.retain(|&x| x != operator_approval);
+    }
+    state
 }
 
-/// Transfer ownership of an NFT -- THE CALLER IS RESPONSIBLE
-/// TO CONFIRM THAT `to` IS CAPABLE OF RECEIVING NFTS OR ELSE
-/// THEY MAY BE PERMANENTLY LOST
+/// Transfer ownership of an NFT.
 ///
 /// Throws unless `ctx.sender` is the current owner, an authorized
 /// operator, or the approved address for this NFT. Throws if `from` is
@@ -315,20 +315,19 @@ pub fn set_approval_for_all(
 /// ### Returns
 ///
 /// The new state object of type [`NFTContractState`] with an updated ledger.
-#[action]
+#[action(shortname = 0x03)]
 pub fn transfer_from(
     ctx: ContractContext,
-    state: NFTContractState,
+    mut state: NFTContractState,
     from: Address,
     to: Address,
     token_id: u128,
 ) -> NFTContractState {
-    let mut new_state = state;
-    if !new_state.is_approved_or_owner(ctx.sender, token_id) {
-        panic!("ERC721: transfer caller is not owner nor approved")
+    if !state.is_approved_or_owner(ctx.sender, token_id) {
+        panic!("MPC-721: transfer caller is not owner nor approved")
     } else {
-        new_state._transfer(from, to, token_id);
-        new_state
+        state._transfer(from, to, token_id);
+        state
     }
 }
 
@@ -352,23 +351,22 @@ pub fn transfer_from(
 /// ### Returns
 ///
 /// The new state object of type [`NFTContractState`] with an updated ledger.
-#[action]
+#[action(shortname = 0x01)]
 pub fn mint(
     ctx: ContractContext,
-    state: NFTContractState,
+    mut state: NFTContractState,
     to: Address,
     token_id: u128,
-    token_uri: String,
+    token_uri: [u8; 16],
 ) -> NFTContractState {
     if ctx.sender != state.contract_owner {
-        panic!("ERC721: mint only callable by the contract owner")
+        panic!("MPC-721: mint only callable by the contract owner")
     } else if state.exists(token_id) {
-        panic!("ERC721: token already minted")
+        panic!("MPC-721: token already minted")
     } else {
-        let mut new_state = state;
-        new_state.owners.insert(token_id, to);
-        new_state.token_uris.insert(token_id, token_uri);
-        new_state
+        state.owners.insert(token_id, to);
+        state.token_uri_details.insert(token_id, token_uri);
+        state
     }
 }
 
@@ -387,18 +385,17 @@ pub fn mint(
 /// ### Returns
 ///
 /// The new state object of type [`NFTContractState`] with an updated ledger.
-#[action]
-pub fn burn(ctx: ContractContext, state: NFTContractState, token_id: u128) -> NFTContractState {
-    let mut new_state = state;
-    if !new_state.is_approved_or_owner(ctx.sender, token_id) {
-        panic!("ERC721: burn caller is not owner nor approved")
+#[action(shortname = 0x08)]
+pub fn burn(ctx: ContractContext, mut state: NFTContractState, token_id: u128) -> NFTContractState {
+    if !state.is_approved_or_owner(ctx.sender, token_id) {
+        panic!("MPC-721: burn caller is not owner nor approved")
     } else {
-        let owner = new_state.owner_of(token_id);
+        let owner = state.owner_of(token_id);
         // Clear approvals
-        new_state._approve(None, token_id);
+        state._approve(None, token_id);
 
-        new_state.owners.remove(&token_id);
-        new_state.token_uris.remove(&token_id);
-        new_state
+        state.owners.remove(&token_id);
+        state.token_uri_details.remove(&token_id);
+        state
     }
 }

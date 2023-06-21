@@ -1,16 +1,16 @@
 [package]
 name = "nft-contract"
-version = "1.5.0"
-license = "MIT"
+version = "1.13.0"
 description = "Example contract for the Partisia Blockchain."
 homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
 repository = "https://gitlab.com/partisiablockchain/language/example-contracts"
 documentation = "https://gitlab.com/partisiablockchain/language/example-contracts"
 readme = "README.md"
 edition = "2021"
+license = "MIT"
 
 [lib]
-crate-type = ['cdylib']
+crate-type = ['rlib', 'cdylib']
 
 [dependencies]
 pbc_contract_common = { workspace = true }

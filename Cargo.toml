@@ -17,9 +17,12 @@ members = [
     "zk-average-salary",
 ]
 
+[workspace.metadata.partisiablockchain]
+cargo-partisia = "1.33.0"
+contract-integrationtest = "3.103.0"
 
 [workspace.metadata.zkcompiler]
-url = "https://gitlab.com/api/v4/projects/37549006/packages/maven/com/partisiablockchain/language/zkcompiler/3.82.0/zkcompiler-3.82.0-jar-with-dependencies.jar"
+url = "https://gitlab.com/api/v4/groups/12499775/-/packages/maven/com/partisiablockchain/language/zkcompiler/3.82.0/zkcompiler-3.82.0-jar-with-dependencies.jar"
 
 [workspace.dependencies]
 pbc_contract_common = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "15.1.0" }
