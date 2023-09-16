@@ -1,25 +1,4 @@
-//! This is an example auction smart contract.
-//!
-//! The auction sells tokens of one type for another (can be the same token type).
-//!
-//! The contract works by escrowing bids as well as the tokens for sale.
-//! This is done through `transfer` calls to the token contracts with
-//! callbacks ensuring that the transfers were successful.
-//! If a bid is not the current highest bid the transferred bidding tokens can
-//! be claimed during any phase.
-//!
-//! The auction has a set `duration`. After this duration the auction no longer accepts bids and can
-//! be executed by anyone. Once `execute` has been called the contract moves the tokens for sale
-//! into the highest bidders claims and the highest bid into the contract owners claims.
-//!
-//! In the bidding phase any account can call `bid` on the auction which makes a token `transfer`
-//! from the bidder to the contract. Once the transfer is done the contract updates its
-//! highest bidder accordingly.
-//!
-//! The contract owner also has the ability to `cancel` the contract during the bidding phase.
-//! If cancel is called the highest bid is taken out of escrow such that the highest bidder can
-//! claim it again. The same is done for the tokens for sale which the contract owner
-//! then can claim.
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -63,13 +42,17 @@ pub struct TokenClaim {
     tokens_for_sale: u128,
 }
 
-//// Constants for the different phases of the contract.
-
+/// Constants for the different phases of the contract.
 type ContractStatus = u8;
-const CREATION: ContractStatus = 0;
-const BIDDING: ContractStatus = 1;
-const ENDED: ContractStatus = 2;
-const CANCELLED: ContractStatus = 3;
+
+/// Creation phase of the contract.
+pub const CREATION: ContractStatus = 0;
+/// Bidding phase of the contract.
+pub const BIDDING: ContractStatus = 1;
+/// Ended phase of the contract.
+pub const ENDED: ContractStatus = 2;
+/// Cancelled phase of the contract.
+pub const CANCELLED: ContractStatus = 3;
 
 /// Token contract actions
 #[inline]
@@ -145,7 +128,7 @@ impl AuctionContractState {
             );
         }
 
-        let mut value = self.claim_map.get_mut(&bidder).unwrap();
+        let value = self.claim_map.get_mut(&bidder).unwrap();
         value.tokens_for_bidding += additional_claim.tokens_for_bidding;
         value.tokens_for_sale += additional_claim.tokens_for_sale;
     }

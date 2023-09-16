@@ -1,8 +1,4 @@
-//! This simple contract opens all secret input and saves it to the contract state.
-//! For each input a computation is run which creates a new secret variable with the same value
-//! as the secret input except that 300 is added to wealth.
-//! Then, that variable is opened.
-
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -11,11 +7,14 @@ extern crate pbc_contract_codegen;
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
+use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use pbc_traits::ReadWriteState;
 use pbc_zk::{Sbi128, Sbi16, Sbi8, SecretBinary};
 use read_write_rpc_derive::{ReadRPC, ReadWriteRPC};
 use read_write_state_derive::ReadWriteState;
+
+const ZK_COMPUTE_OPEN_ADD_300: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
 struct SecretVarMetadata {}
@@ -148,6 +147,7 @@ fn output_variables(
         state,
         vec![],
         vec![ZkStateChange::start_computation_with_inputs(
+            ZK_COMPUTE_OPEN_ADD_300,
             vec![SecretVarMetadata {}],
             vec![variable_id],
         )],

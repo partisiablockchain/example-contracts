@@ -6,7 +6,33 @@ mod test_contract {
     use std::ops::Sub;
 
     use crate::{
-        approve, bulk_transfer, bulk_transfer_from, initialize, transfer, transfer_from, Transfer,
+        approve, bulk_transfer, bulk_transfer_from, initialize, transfer, transfer_from,
+        TokenState, Transfer,
+    };
+
+    const SENDER: Address = Address {
+        address_type: AddressType::Account,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    };
+    const ALLOWED_SPENDER: Address = Address {
+        address_type: AddressType::Account,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    };
+    const RECEIVER_1: Address = Address {
+        address_type: AddressType::Account,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+    };
+    const RECEIVER_2: Address = Address {
+        address_type: AddressType::Account,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
+    };
+    const OWNER: Address = Address {
+        address_type: AddressType::Account,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4],
+    };
+    const CONTRACT_ADDRESS: Address = Address {
+        address_type: AddressType::PublicContract,
+        identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9],
     };
 
     fn create_ctx(sender: Address) -> ContractContext {
@@ -17,10 +43,7 @@ mod test_contract {
             ],
         };
         let ctx: ContractContext = ContractContext {
-            contract_address: Address {
-                address_type: AddressType::Account,
-                identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            },
+            contract_address: CONTRACT_ADDRESS,
             sender,
             block_time: 123,
             block_production_time: 1,
@@ -32,205 +55,135 @@ mod test_contract {
 
     #[test]
     pub fn test_initialize() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, events) = initialize(
+        let ctx = create_ctx(SENDER);
+        let state: TokenState = initialize(
             ctx,
             String::from("HelloToken"),
             String::from("H$"),
             0,
             1000000,
         );
-        assert_eq!(0, events.len());
+
         assert_eq!(1000000, state.total_supply);
-        assert_eq!(sender, state.owner);
+        assert_eq!(SENDER, state.owner);
         assert_eq!(0, state.decimals);
         assert_eq!(String::from("HelloToken"), state.name);
         assert_eq!(String::from("H$"), state.symbol);
-        assert_eq!(1, state.balances.len());
-        assert_eq!(Some(&1000000u128), state.balances.get(&sender));
+        assert_eq!(1000000u128, state.balance_of(&SENDER));
         assert!(state.allowed.is_empty());
     }
 
     #[test]
     pub fn test_transfer() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(
+        let ctx = create_ctx(SENDER);
+        let state: TokenState = initialize(
             ctx,
             String::from("HelloToken"),
             String::from("H$"),
             0,
             1000000,
         );
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let ctx = create_ctx(sender);
-        let (new_state, events) = transfer(ctx, state, receiver, 1000);
-        assert_eq!(0, events.len());
-        assert_eq!(2, new_state.balances.len());
-        assert_eq!(Some(&999000u128), new_state.balances.get(&sender));
-        assert_eq!(Some(&1000u128), new_state.balances.get(&receiver));
+        let ctx = create_ctx(SENDER);
+        let new_state: TokenState = transfer(ctx, state, RECEIVER_1, 1000);
+
+        assert_eq!(999000u128, new_state.balance_of(&SENDER));
+        assert_eq!(1000u128, new_state.balance_of(&RECEIVER_1));
     }
 
     #[test]
     pub fn test_transfer_same_receiver() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(
+        let ctx = create_ctx(SENDER);
+        let state: TokenState = initialize(
             ctx,
             String::from("HelloToken"),
             String::from("H$"),
             0,
             1000000,
         );
-        let receiver = sender;
-        let ctx = create_ctx(sender);
-        let (new_state, events) = transfer(ctx, state, receiver, 1000);
-        assert_eq!(0, events.len());
-        assert_eq!(1, new_state.balances.len());
-        assert_eq!(Some(&1000000u128), new_state.balances.get(&sender));
+        let receiver = SENDER;
+        let ctx = create_ctx(SENDER);
+        let new_state: TokenState = transfer(ctx, state, receiver, 1000);
+
+        assert_eq!(1000000u128, new_state.balance_of(&SENDER));
     }
 
     #[test]
     #[should_panic]
     pub fn test_transfer_invalid() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 999);
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let ctx = create_ctx(sender);
-        transfer(ctx, state, receiver, 1000);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 999);
+        let ctx = create_ctx(SENDER);
+        transfer(ctx, state, RECEIVER_1, 1000);
     }
 
     #[test]
     #[should_panic]
     pub fn test_transfer_wrong_sender() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(
+        let ctx = create_ctx(SENDER);
+        let state: TokenState = initialize(
             ctx,
             String::from("HelloToken"),
             String::from("H$"),
             0,
             1000000,
         );
-        let wrong_sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let ctx = create_ctx(wrong_sender);
-        transfer(ctx, state, receiver, 1000);
+        let wrong_sender = RECEIVER_1;
+        transfer(create_ctx(wrong_sender), state, RECEIVER_1, 1000);
     }
 
     #[test]
     pub fn test_transfer_zero() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 999);
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let ctx = create_ctx(sender);
-        let (new_state, events) = transfer(ctx, state, receiver, 0);
-        assert_eq!(0, events.len());
-        assert_eq!(2, new_state.balances.len());
-        assert_eq!(Some(&999u128), new_state.balances.get(&sender));
-        assert_eq!(Some(&0u128), new_state.balances.get(&receiver));
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 999);
+        let ctx = create_ctx(SENDER);
+        let new_state: TokenState = transfer(ctx, state, RECEIVER_1, 0);
+
+        assert_eq!(999u128, new_state.balance_of(&SENDER));
+        assert_eq!(0u128, new_state.balance_of(&RECEIVER_1));
     }
 
     #[test]
     pub fn test_bulk_transfer() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(
+        let ctx = create_ctx(SENDER);
+        let state: TokenState = initialize(
             ctx,
             String::from("HelloToken"),
             String::from("H$"),
             0,
             1000000,
         );
-        let receiver1 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver2 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let ctx = create_ctx(sender);
+        let ctx = create_ctx(SENDER);
         let transfer1 = Transfer {
-            to: receiver1,
+            to: RECEIVER_1,
             amount: 1000u128,
         };
         let transfer2 = Transfer {
-            to: receiver2,
+            to: RECEIVER_2,
             amount: 2000u128,
         };
         let transfers = vec![transfer1, transfer2];
-        let (new_state, events) = bulk_transfer(ctx, state, transfers);
-        assert_eq!(0, events.len());
-        assert_eq!(3, new_state.balances.len());
-        assert_eq!(Some(&997000u128), new_state.balances.get(&sender));
-        assert_eq!(Some(&1000u128), new_state.balances.get(&receiver1));
-        assert_eq!(Some(&2000u128), new_state.balances.get(&receiver2));
+        let new_state: TokenState = bulk_transfer(ctx, state, transfers);
+
+        assert_eq!(997000u128, new_state.balance_of(&SENDER));
+        assert_eq!(1000u128, new_state.balance_of(&RECEIVER_1));
+        assert_eq!(2000u128, new_state.balance_of(&RECEIVER_2));
     }
 
     #[test]
     #[should_panic]
     pub fn test_bulk_transfer_invalid() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let receiver1 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver2 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let ctx = create_ctx(sender);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
         let transfer1 = Transfer {
-            to: receiver1,
+            to: RECEIVER_1,
             amount: 1100u128,
         };
         let transfer2 = Transfer {
-            to: receiver2,
+            to: RECEIVER_2,
             amount: 700u128,
         };
         let transfers = vec![transfer1, transfer2];
@@ -239,215 +192,111 @@ mod test_contract {
 
     #[test]
     pub fn test_approve() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
 
         assert_eq!(0, state.allowed.len());
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let (new_state, events) = approve(ctx, state, allowed_spender, 100);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&sender));
-        let allowed_from_sender = new_state.allowed.get(&sender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&100u128, allowed_from_sender.get(&allowed_spender).unwrap());
+        let ctx = create_ctx(SENDER);
+        let new_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 100);
+        assert_eq!(100u128, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
     }
 
     #[test]
     pub fn test_approve_overwrite() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
 
         assert_eq!(0, state.allowed.len());
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 100);
-        let ctx = create_ctx(sender);
-        let (new_state, _) = approve(ctx, intermediate_state, allowed_spender, 300);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&sender));
-        let allowed_from_sender = new_state.allowed.get(&sender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&300u128, allowed_from_sender.get(&allowed_spender).unwrap());
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 100);
+        let ctx = create_ctx(SENDER);
+        let new_state: TokenState = approve(ctx, intermediate_state, ALLOWED_SPENDER, 300);
+        assert_eq!(300u128, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
     }
 
     #[test]
     pub fn test_transfer_from() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 100);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = transfer_from(ctx, intermediate_state, sender, receiver, 100);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&sender));
-        let allowed_from_sender = new_state.allowed.get(&sender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&0u128, allowed_from_sender.get(&allowed_spender).unwrap());
-        assert_eq!(0, events.len());
-        assert_eq!(2, new_state.balances.len());
-        assert_eq!(Some(&900u128), new_state.balances.get(&sender));
-        assert_eq!(Some(&100u128), new_state.balances.get(&receiver));
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 100);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let new_state: TokenState = transfer_from(ctx, intermediate_state, SENDER, RECEIVER_1, 100);
+
+        assert_eq!(0, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
+
+        assert_eq!(900u128, new_state.balance_of(&SENDER));
+        assert_eq!(100u128, new_state.balance_of(&RECEIVER_1));
     }
 
     #[test]
     pub fn test_transfer_from_no_approve() {
-        let owner = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(owner);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let ctx = create_ctx(allowed_spender);
+        let ctx = create_ctx(OWNER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(ALLOWED_SPENDER);
 
-        let (new_state, _) = transfer_from(ctx, state, allowed_spender, receiver, 0);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&allowed_spender));
-        let allowed_from_sender = new_state.allowed.get(&allowed_spender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&0u128, allowed_from_sender.get(&allowed_spender).unwrap());
-        assert_eq!(2, new_state.balances.len());
-        assert_eq!(Some(&1000u128), new_state.balances.get(&owner));
-        assert_eq!(Some(&0u128), new_state.balances.get(&receiver));
+        let new_state: TokenState = transfer_from(ctx, state, ALLOWED_SPENDER, RECEIVER_1, 0);
+
+        assert_eq!(0, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
+
+        assert_eq!(1000u128, new_state.balance_of(&OWNER));
+        assert_eq!(0u128, new_state.balance_of(&RECEIVER_1));
     }
 
     #[test]
     pub fn test_transfer_from_same_receiver() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver = sender;
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 100);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = transfer_from(ctx, intermediate_state, sender, receiver, 100);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&sender));
-        let allowed_from_sender = new_state.allowed.get(&sender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&0u128, allowed_from_sender.get(&allowed_spender).unwrap());
-        assert_eq!(0, events.len());
-        assert_eq!(1, new_state.balances.len());
-        assert_eq!(Some(&1000u128), new_state.balances.get(&sender));
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let receiver = SENDER;
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 100);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let new_state: TokenState = transfer_from(ctx, intermediate_state, SENDER, receiver, 100);
+
+        assert_eq!(0, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
+
+        assert_eq!(1000u128, new_state.balance_of(&SENDER));
     }
 
     #[test]
     #[should_panic]
     pub fn test_transfer_from_not_allowed() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 100);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = transfer_from(ctx, intermediate_state, sender, receiver, 101);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 100);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let _new_state: TokenState =
+            transfer_from(ctx, intermediate_state, SENDER, RECEIVER_1, 101);
     }
 
     #[test]
     #[should_panic]
     pub fn test_transfer_from_no_funds() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 100);
-        let ctx = create_ctx(sender);
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 1000);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = transfer_from(ctx, intermediate_state, sender, receiver, 101);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 100);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 1000);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let _new_state: TokenState =
+            transfer_from(ctx, intermediate_state, SENDER, RECEIVER_1, 101);
     }
 
     #[test]
     pub fn test_bulk_transfer_from() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver1 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let receiver2 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-
         let transfer1 = Transfer {
-            to: receiver1,
+            to: RECEIVER_1,
             amount: 100u128,
         };
         let transfer2 = Transfer {
-            to: receiver2,
+            to: RECEIVER_2,
             amount: 200u128,
         };
         let transfers = vec![transfer1, transfer2];
@@ -455,52 +304,30 @@ mod test_contract {
             .iter()
             .fold(0, |acc, to_and_amount| acc + to_and_amount.amount);
 
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let ctx = create_ctx(sender);
-        let (intermediate_state, _) =
-            approve(ctx, state, allowed_spender, total_amount_to_transfer);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = bulk_transfer_from(ctx, intermediate_state, sender, transfers);
-        assert_eq!(1, new_state.allowed.len());
-        assert!(new_state.allowed.contains_key(&sender));
-        let allowed_from_sender = new_state.allowed.get(&sender).unwrap();
-        assert_eq!(1, allowed_from_sender.len());
-        assert!(allowed_from_sender.contains_key(&allowed_spender));
-        assert_eq!(&0u128, allowed_from_sender.get(&allowed_spender).unwrap());
-        assert_eq!(0, events.len());
-        assert_eq!(3, new_state.balances.len());
-        assert_eq!(Some(&700u128), new_state.balances.get(&sender));
-        assert_eq!(Some(&100u128), new_state.balances.get(&receiver1));
-        assert_eq!(Some(&200u128), new_state.balances.get(&receiver2));
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState =
+            approve(ctx, state, ALLOWED_SPENDER, total_amount_to_transfer);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let new_state: TokenState = bulk_transfer_from(ctx, intermediate_state, SENDER, transfers);
+        assert_eq!(0, new_state.allowance(&SENDER, &ALLOWED_SPENDER));
+
+        assert_eq!(700u128, new_state.balance_of(&SENDER));
+        assert_eq!(100u128, new_state.balance_of(&RECEIVER_1));
+        assert_eq!(200u128, new_state.balance_of(&RECEIVER_2));
     }
 
     #[test]
     #[should_panic]
     pub fn test_bulk_transfer_not_allowed() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver1 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let receiver2 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-
         let transfer1 = Transfer {
-            to: receiver1,
+            to: RECEIVER_1,
             amount: 100u128,
         };
         let transfer2 = Transfer {
-            to: receiver2,
+            to: RECEIVER_2,
             amount: 200u128,
         };
         let transfers = vec![transfer1, transfer2];
@@ -508,53 +335,35 @@ mod test_contract {
             .iter()
             .fold(0, |acc, to_and_amount| acc + to_and_amount.amount);
 
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
-        let ctx = create_ctx(sender);
-        let (intermediate_state, _) =
-            approve(ctx, state, allowed_spender, total_amount_to_transfer.sub(1));
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = bulk_transfer_from(ctx, intermediate_state, sender, transfers);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 1000);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState =
+            approve(ctx, state, ALLOWED_SPENDER, total_amount_to_transfer.sub(1));
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let _new_state: TokenState = bulk_transfer_from(ctx, intermediate_state, SENDER, transfers);
     }
 
     #[test]
     #[should_panic]
     pub fn test_bulk_transfer_from_no_funds() {
-        let sender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        };
-        let allowed_spender = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        };
-        let receiver1 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        };
-        let receiver2 = Address {
-            address_type: AddressType::Account,
-            identifier: [0u8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-        };
-
         let transfer1 = Transfer {
-            to: receiver1,
+            to: RECEIVER_1,
             amount: 100u128,
         };
         let transfer2 = Transfer {
-            to: receiver2,
+            to: RECEIVER_2,
             amount: 200u128,
         };
         let transfers = vec![transfer1, transfer2];
-        let total_amount_to_transfer = transfers
-            .iter()
-            .fold(0, |acc, to_and_amount| acc + to_and_amount.amount);
 
-        let ctx = create_ctx(sender);
-        let (state, _) = initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 100);
-        let ctx = create_ctx(sender);
-        let (intermediate_state, _) = approve(ctx, state, allowed_spender, 1000);
-        let ctx = create_ctx(allowed_spender);
-        let (new_state, events) = bulk_transfer_from(ctx, intermediate_state, sender, transfers);
+        let ctx = create_ctx(SENDER);
+        let state: TokenState =
+            initialize(ctx, String::from("HelloToken"), String::from("H$"), 0, 100);
+        let ctx = create_ctx(SENDER);
+        let intermediate_state: TokenState = approve(ctx, state, ALLOWED_SPENDER, 1000);
+        let ctx = create_ctx(ALLOWED_SPENDER);
+        let _new_state: TokenState = bulk_transfer_from(ctx, intermediate_state, SENDER, transfers);
     }
 }

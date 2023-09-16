@@ -1,19 +1,30 @@
-image: registry.gitlab.com/partisia/dockerimages/rustmaven:1.67
+variables:
+  MAVEN_WORK_DIR: "java-test/"
 
-stages:
-- build
+include:
+- project: 'secata-public/pom/shared-ci'
+  file: 'contract-java-test.yml'
+  ref: 'v.2.21.0'
+- project: 'secata-public/pom/shared-ci'
+  file: 'rust-contract.yml'
+  ref: 'v.2.21.0'
+- project: 'secata-public/pom/shared-ci'
+  file: 'jar-codequality.yml'
+  ref: 'v.2.21.0'
 
-build:
-  stage: build
+compile-contracts:
+  extends: .cargo
+  image: registry.gitlab.com/partisia/dockerimages/rustmaven:${RUST_VERSION}
   script:
-  - cargo install cargo-partisia-contract
-  - cargo partisia-contract build --release
-
-codequality:
+    - !reference [.functions, cargo-partisia-contract]
+    - !reference [.scripts, build]
   stage: build
-  except:
-  - main
-  script:
-  - cargo check
-  - cargo clippy --all-targets --all-features -- -D warnings -D missing_docs
-  - cargo fmt --all -- --check
+  artifacts:
+    paths:
+      - target/wasm32-unknown-unknown/release/*.abi
+      - target/wasm32-unknown-unknown/release/*.wasm
+      - target/wasm32-unknown-unknown/release/*.zkwa
+
+contract-java-test:
+  variables:
+    MAVEN_WORK_DIR: "./"

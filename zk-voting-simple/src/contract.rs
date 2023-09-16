@@ -1,17 +1,4 @@
-//! Secret Voting Contract
-//!
-//! Secret voting is a common Zero-knowledge MPC example, wherein several persons are interested in
-//! voting upon some question, without revealing their personal preference, similar to many
-//! democratic election processes.
-//!
-//! This contract's flow follows as:
-//!
-//! 1. Initialization of contract with voting information, including owner and vote duration
-//! 2. Voters send their votes. (0 is against, any other value is for).
-//! 3. After the deadline, the vote counting can be started by anyone.
-//! 4. Zk Computation sums yes votes and no votes, and output each as a separate variable.
-//! 5. When computation is complete the contract will open the output variables.
-//! 6. The contract computes whether the vote was accepted or rejected.
+#![doc = include_str!("../README.md")]
 
 #[macro_use]
 extern crate pbc_contract_codegen;
@@ -21,6 +8,7 @@ use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
+use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use read_write_state_derive::ReadWriteState;
 
@@ -40,6 +28,8 @@ enum SecretVarType {
 
 /// The maximum size of MPC variables.
 const BITLENGTH_OF_SECRET_VOTE_VARIABLES: u32 = 32;
+
+const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 #[derive(ReadWriteState, CreateTypeSpec, Clone)]
 struct VoteResult {
@@ -147,9 +137,12 @@ fn start_vote_counting(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation(vec![SecretVarMetadata {
-            variable_type: SecretVarType::CountedYesVotes,
-        }])],
+        vec![ZkStateChange::start_computation(
+            ZK_COMPUTE,
+            vec![SecretVarMetadata {
+                variable_type: SecretVarType::CountedYesVotes,
+            }],
+        )],
     )
 }
 

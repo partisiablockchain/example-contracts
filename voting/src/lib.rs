@@ -1,20 +1,13 @@
-//! Example smart contract implementing a simple majority open ballot vote for a proposal among a fixed list of eligible voters.
-//!
-//! How it works
-//! * The owner of the proposal deploys a Vote smart contract to the blockchain and initializes it.
-//! * Eligible voters can cast their vote until the deadline.
-//! * After the deadline passes anyone can initiate counting of the votes.
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
 extern crate pbc_contract_codegen;
 extern crate pbc_contract_common;
 
-use std::collections::BTreeSet;
-
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
-use pbc_contract_common::sorted_vec_map::SortedVecMap;
+use pbc_contract_common::sorted_vec_map::{SortedVecMap, SortedVecSet};
 
 /// The state of the vote, which is persisted on-chain.
 #[state]
@@ -22,7 +15,7 @@ pub struct VoteState {
     /// Identification of the proposal being voted for.
     pub proposal_id: u64,
     /// The list of eligible voters.
-    pub voters: Vec<Address>,
+    pub voters: SortedVecSet<Address>,
     /// The deadline of the vote in UTC millis
     /// (milliseconds after 1970-01-01 00:00:00 UTC)
     pub deadline_utc_millis: i64,
@@ -57,7 +50,7 @@ pub fn initialize(
     deadline_utc_millis: i64,
 ) -> VoteState {
     assert_ne!(voters.len(), 0, "Voters are required");
-    let unique_voters: BTreeSet<Address> = voters.iter().cloned().collect();
+    let unique_voters: SortedVecSet<Address> = voters.iter().cloned().collect();
     assert_eq!(
         voters.len(),
         unique_voters.len(),
@@ -65,7 +58,7 @@ pub fn initialize(
     );
     VoteState {
         proposal_id,
-        voters,
+        voters: unique_voters,
         deadline_utc_millis,
         votes: SortedVecMap::new(),
         result: None,

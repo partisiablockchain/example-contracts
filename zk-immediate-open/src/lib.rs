@@ -1,7 +1,4 @@
-//! This simple contract opens all secret input and saves it to the contract state.
-//! For each input a computation is run which creates a new secret variable with the same value as the secret input.
-//! Then, that variable is opened.
-
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -9,6 +6,7 @@ extern crate pbc_contract_codegen;
 
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
+use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
@@ -19,6 +17,8 @@ struct SecretVarMetadata {}
 
 /// Input is a 32 bit integer.
 const BITLENGTH_OF_SECRET_SALARY_VARIABLES: u32 = 32;
+
+const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 /// State of the contract.
 #[state]
@@ -80,6 +80,7 @@ fn output_variables(
         state,
         vec![],
         vec![ZkStateChange::start_computation_with_inputs(
+            ZK_COMPUTE,
             vec![SecretVarMetadata {}],
             vec![variable_id],
         )],

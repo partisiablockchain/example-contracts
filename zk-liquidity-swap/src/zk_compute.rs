@@ -9,6 +9,7 @@ struct AmountAndDirection {
 }
 
 /// Very simple computation that loads the given variable and outputs.
+#[zk_compute(shortname = 0x61)]
 pub fn zk_compute(input_id: i32) -> AmountAndDirection {
     load_sbi::<AmountAndDirection>(input_id)
 }
