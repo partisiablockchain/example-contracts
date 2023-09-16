@@ -1,6 +1,6 @@
 [package]
 name = "zk-immediate-open"
-version = "1.13.0"
+version = "1.65.0"
 description = "Example contract for the Partisia Blockchain."
 homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
 repository = "https://gitlab.com/partisiablockchain/language/example-contracts"

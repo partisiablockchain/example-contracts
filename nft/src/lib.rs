@@ -1,28 +1,4 @@
-//! This is an example non-fungible token (NFT) smart contract.
-//!
-//! The contract provides basic functionality to track and transfer NFTs.
-//!
-//! The contract works using a mint method for creating new bindings of NFTs to accounts.
-//! The mint method associates the minted NFT with an URI, which can be used to connect the NFT
-//! to an external website/resource, e.g. IPFS.
-//!
-//! An NFT is identified via an u128 tokenID.
-//!
-//! Any token owner can then `transfer` their tokens to other accounts, or `approve` other accounts
-//! to transfer their tokens.
-//! If Alice has been approved an NFT from Bob, then Alice can use `transfer_from` to transfer Bob's tokens.
-//!
-//! Each token can only be approved to a single account.
-//!
-//! Any token owner can also make another account an operator of their tokens using `set_approval_for_all`.
-//! An operator is approved to manage all NFTs owned by the owner, this includes setting approval on each
-//! token and transfer.
-//!
-//! The contract follows the MPC-721 NFT Standard Contract Interface with URI extension
-//! <https://partisiablockchain.gitlab.io/documentation/smart-contracts/integration/mpc-721-nft-contract.html>
-//!
-//! The MPC-721 interface is in turn inspired by the ERC721 NFT contract with extensions for Metadata and Burnable\
-//! <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md>
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -31,11 +7,11 @@ extern crate pbc_contract_codegen;
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
-use pbc_contract_common::sorted_vec_map::SortedVecMap;
+use pbc_contract_common::sorted_vec_map::{SortedVec, SortedVecMap};
 use read_write_state_derive::ReadWriteState;
 
 /// A permission to transfer and approve NFTs given from an NFT owner to a separate address, called an operator.
-#[derive(ReadWriteState, CreateTypeSpec, PartialEq, Copy, Clone)]
+#[derive(ReadWriteState, CreateTypeSpec, PartialEq, Copy, Clone, Ord, PartialOrd, Eq)]
 struct OperatorApproval {
     /// NFT owner.
     owner: Address,
@@ -55,7 +31,7 @@ pub struct NFTContractState {
     /// Mapping from token_id to the approved address who can transfer the token.
     token_approvals: SortedVecMap<u128, Address>,
     /// Containing approved operators of owners. Operators can transfer and change approvals on all tokens owned by owner.
-    operator_approvals: Vec<OperatorApproval>,
+    operator_approvals: SortedVec<OperatorApproval>,
     /// Template which the uri's of the NFTs fit into.
     uri_template: String,
     /// Mapping from token_id to the URI of the token.
@@ -144,8 +120,8 @@ impl NFTContractState {
     pub fn is_approved_or_owner(&self, spender: Address, token_id: u128) -> bool {
         let owner = self.owner_of(token_id);
         spender == owner
-            || self.is_approved_for_all(owner, spender)
             || self.get_approved(token_id) == Some(spender)
+            || self.is_approved_for_all(owner, spender)
     }
 
     /// Mutates the state by approving `to` to operate on `token_id`.
@@ -214,7 +190,7 @@ pub fn initialize(
         symbol,
         owners: SortedVecMap::new(),
         token_approvals: SortedVecMap::new(),
-        operator_approvals: vec![],
+        operator_approvals: SortedVec::new(),
         uri_template,
         token_uri_details: SortedVecMap::new(),
         contract_owner: ctx.sender,
@@ -285,11 +261,9 @@ pub fn set_approval_for_all(
         operator,
     };
     if approved {
-        if !state.operator_approvals.contains(&operator_approval) {
-            state.operator_approvals.push(operator_approval)
-        }
+        state.operator_approvals.insert(operator_approval);
     } else {
-        state.operator_approvals.retain(|&x| x != operator_approval);
+        state.operator_approvals.remove(&operator_approval);
     }
     state
 }

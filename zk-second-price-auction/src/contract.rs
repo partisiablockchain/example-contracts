@@ -1,21 +1,4 @@
-//! Simple Second Price Auction Contract.
-//!
-//! Second price auctions is a common form of auction, where each party places a bid, and the
-//! winner is the party who places the highest bid. However, the winner only pays the amount of the
-//! second highest bid. ZK implementations of such auctions facilities the possibility of such
-//! auctions without revealing the incoming bids - making the auction fair.
-//!
-//! This implementation works in the following steps:
-//!
-//! 1. Initialization on the blockchain.
-//! 2. Receival of secret bids, using zero-knowledge protocols.
-//! 3. Once enough bids have been received, the owner of the contract can initialize the auction.
-//! 4. The ZK computation computes the winning bid in a secure manner.
-//! 5. Once the ZK computation concludes, the winning bid will be published and the winner will be
-//! stored in the state, together with their bid.
-//!
-//!
-
+#![doc = include_str!("../README.md")]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -26,6 +9,7 @@ use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
+use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{
     AttestationId, CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange,
 };
@@ -53,6 +37,8 @@ const BITLENGTH_OF_SECRET_BID_VARIABLES: [u32; 1] = [32];
 
 /// Number of bids required before starting auction computation.
 const MIN_NUM_BIDDERS: u32 = 3;
+
+const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 /// Type of tracking bid amount
 type BidAmount = i32;
@@ -216,14 +202,17 @@ fn compute_winner(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation(vec![
-            SecretVarMetadata {
-                bidder_id: BidderId { id: -1 },
-            },
-            SecretVarMetadata {
-                bidder_id: BidderId { id: -1 },
-            },
-        ])],
+        vec![ZkStateChange::start_computation(
+            ZK_COMPUTE,
+            vec![
+                SecretVarMetadata {
+                    bidder_id: BidderId { id: -1 },
+                },
+                SecretVarMetadata {
+                    bidder_id: BidderId { id: -1 },
+                },
+            ],
+        )],
     )
 }
 

@@ -12,7 +12,8 @@ struct SecretResponse {
     wealth: Sbi128,
 }
 
-pub fn zk_compute(input_id: i32) -> SecretResponse {
+#[zk_compute(shortname = 0x61)]
+pub fn open_but_first_add_300(input_id: i32) -> SecretResponse {
     let mut value = load_sbi::<SecretResponse>(input_id);
     value.wealth = value.wealth + Sbi128::from(300i128);
     value

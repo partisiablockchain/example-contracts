@@ -1,6 +1,6 @@
 [package]
 name = "liquidity-swap"
-version = "1.13.0"
+version = "1.65.0"
 description = "Example contract for the Partisia Blockchain."
 homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
 repository = "https://gitlab.com/partisiablockchain/language/example-contracts"
@@ -24,6 +24,7 @@ pbc_contract_codegen = { workspace = true }
 [dev-dependencies]
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+proptest = "1.0.0"
 
 [features]
 abi = ["pbc_contract_common/abi", "pbc_contract_codegen/abi", "pbc_traits/abi", "create_type_spec_derive/abi"]

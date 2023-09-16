@@ -6,7 +6,8 @@ use pbc_zk::*;
 /// ### Returns:
 ///
 /// The number of accepting votes.
-pub fn zk_compute() -> Sbi32 {
+#[zk_compute(shortname = 0x61)]
+pub fn count_votes() -> Sbi32 {
     // Initialize votes
     let mut votes_for: Sbi32 = Sbi32::from(0);
 

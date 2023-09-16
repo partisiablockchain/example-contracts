@@ -1,25 +1,14 @@
-//! This is an example token smart contract.
-//!
-//! The contract has a constant total supply of tokens.
-//! The total supply is initialized together with the contract.
-//!
-//! Any token owner can then `transfer` tokens to other accounts, or `approve` other accounts to use their tokens.
-//! If a Alice has been approved tokens from Bob, then Alice can use `transfer_from` to use Bob's tokens.
-//!
-//! The contract is inspired by the ERC20 token contract.\
-//! <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md>
-#![allow(unused_variables)]
+#![doc = include_str!("../README.md")]
 
 #[macro_use]
 extern crate pbc_contract_codegen;
 
 use create_type_spec_derive::CreateTypeSpec;
 use read_write_rpc_derive::ReadWriteRPC;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
-use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::sorted_vec_map::SortedVecMap;
 
 mod test;
@@ -55,6 +44,37 @@ pub struct TokenState {
     allowed: SortedVecMap<Address, SortedVecMap<Address, u128>>,
 }
 
+/// Extension trait for inserting into a map holding balances.
+/// In a balance map only non-zero values are stored.
+/// If a key has no value in the map the implied value is zero.
+trait BalanceMap<K: Ord, V> {
+    /// Insert into the map if `value` is not zero.
+    /// Removes the key from the map if `value` is zero.
+    ///
+    /// ## Arguments
+    ///
+    /// * `key`: Key for map.
+    ///
+    /// * `value`: The balance value to insert.
+    fn insert_balance(&mut self, key: K, value: V);
+}
+
+/// Extension for [`SortedVecMap`] allowing the use of [`BalanceMap::insert_balance`].
+///
+/// This implementation defines zero as `forall v: v - v = 0` (the subtract of a value from itself), to support a large variety
+/// of values. Might not work correctly for unusual implementations of [`Sub::sub`].
+impl<V: Sub<V, Output = V> + PartialEq + Copy> BalanceMap<Address, V> for SortedVecMap<Address, V> {
+    #[allow(clippy::eq_op)]
+    fn insert_balance(&mut self, key: Address, value: V) {
+        let zero = value - value;
+        if value == zero {
+            self.remove(&key);
+        } else {
+            self.insert(key, value);
+        }
+    }
+}
+
 impl TokenState {
     /// Gets the balance of the specified address.
     ///
@@ -65,11 +85,8 @@ impl TokenState {
     /// ### Returns:
     ///
     /// An [`u64`] representing the amount owned by the passed address.
-    pub fn balance_of(&mut self, owner: Address) -> u128 {
-        if !self.balances.contains_key(&owner) {
-            self.balances.insert(owner, 0);
-        }
-        *self.balances.get(&owner).unwrap()
+    pub fn balance_of(&self, owner: &Address) -> u128 {
+        self.balances.get(owner).copied().unwrap_or(0)
     }
 
     /// Function to check the amount of tokens that an owner allowed to a spender.
@@ -83,17 +100,12 @@ impl TokenState {
     /// ### Returns:
     ///
     /// A [`u64`] specifying the amount whicher `spender` is still allowed to withdraw from `owner`.
-    pub fn allowance(&mut self, owner: Address, spender: Address) -> u128 {
-        if !self.allowed.contains_key(&owner) {
-            self.allowed.insert(owner, SortedVecMap::new());
-        }
-        let allowed_from_owner = self.allowed.get_mut(&owner).unwrap();
-
-        if !allowed_from_owner.contains_key(&spender) {
-            allowed_from_owner.insert(spender, 0);
-        }
-        let allowance = allowed_from_owner.get(&spender).unwrap();
-        *allowance
+    pub fn allowance(&self, owner: &Address, spender: &Address) -> u128 {
+        self.allowed
+            .get(owner)
+            .and_then(|allowed_from_owner| allowed_from_owner.get(spender))
+            .copied()
+            .unwrap_or(0)
     }
 
     fn update_allowance(&mut self, owner: Address, spender: Address, amount: u128) {
@@ -102,7 +114,7 @@ impl TokenState {
         }
         let allowed_from_owner = self.allowed.get_mut(&owner).unwrap();
 
-        allowed_from_owner.insert(spender, amount);
+        allowed_from_owner.insert_balance(spender, amount);
     }
 }
 
@@ -123,7 +135,7 @@ impl TokenState {
 ///
 /// ### Returns:
 ///
-/// The new state object of type [`TokenContractState`] with an initialized ledger.
+/// The new state object of type [`TokenState`] with an initialized ledger.
 #[init]
 pub fn initialize(
     ctx: ContractContext,
@@ -131,11 +143,11 @@ pub fn initialize(
     symbol: String,
     decimals: u8,
     total_supply: u128,
-) -> (TokenState, Vec<EventGroup>) {
+) -> TokenState {
     let mut balances = SortedVecMap::new();
-    balances.insert(ctx.sender, total_supply);
+    balances.insert_balance(ctx.sender, total_supply);
 
-    let state = TokenState {
+    TokenState {
         name,
         symbol,
         decimals,
@@ -143,9 +155,7 @@ pub fn initialize(
         total_supply,
         balances,
         allowed: SortedVecMap::new(),
-    };
-
-    (state, vec![])
+    }
 }
 
 /// Represents the type of a transfer.
@@ -166,7 +176,7 @@ pub struct Transfer {
 ///
 /// * `context`: [`ContractContext`], the context for the action call.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `to`: [`Address`], the address to transfer to.
 ///
@@ -174,14 +184,14 @@ pub struct Transfer {
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 #[action(shortname = 0x01)]
 pub fn transfer(
     context: ContractContext,
     state: TokenState,
     to: Address,
     amount: u128,
-) -> (TokenState, Vec<EventGroup>) {
+) -> TokenState {
     core_transfer(context.sender, state, to, amount)
 }
 
@@ -194,24 +204,23 @@ pub fn transfer(
 ///
 /// * `context`: [`ContractContext`], the context for the action call.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `transfers`: [`Vec[Transfer]`], vector of [the address to transfer to, amount to transfer].
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 #[action(shortname = 0x02)]
 pub fn bulk_transfer(
     context: ContractContext,
-    state: TokenState,
+    mut state: TokenState,
     transfers: Vec<Transfer>,
-) -> (TokenState, Vec<EventGroup>) {
-    let mut new_state = state;
+) -> TokenState {
     for t in transfers {
-        new_state = core_transfer(context.sender, new_state, t.to, t.amount).0;
+        state = core_transfer(context.sender, state, t.to, t.amount);
     }
-    (new_state, vec![])
+    state
 }
 
 /// Transfers `amount` of tokens from address `from` to address `to`.\
@@ -224,7 +233,7 @@ pub fn bulk_transfer(
 ///
 /// * `context`: [`ContractContext`], the context for the action call.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `from`: [`Address`], the address to transfer from.
 ///
@@ -234,7 +243,7 @@ pub fn bulk_transfer(
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 #[action(shortname = 0x03)]
 pub fn transfer_from(
     context: ContractContext,
@@ -242,7 +251,7 @@ pub fn transfer_from(
     from: Address,
     to: Address,
     amount: u128,
-) -> (TokenState, Vec<EventGroup>) {
+) -> TokenState {
     core_transfer_from(context.sender, state, from, to, amount)
 }
 
@@ -256,7 +265,7 @@ pub fn transfer_from(
 ///
 /// * `context`: [`ContractContext`], the context for the action call.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `from`: [`Address`], the address to transfer from.
 ///
@@ -264,19 +273,18 @@ pub fn transfer_from(
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 #[action(shortname = 0x04)]
 pub fn bulk_transfer_from(
     context: ContractContext,
-    state: TokenState,
+    mut state: TokenState,
     from: Address,
     transfers: Vec<Transfer>,
-) -> (TokenState, Vec<EventGroup>) {
-    let mut new_state = state;
+) -> TokenState {
     for t in transfers {
-        new_state = core_transfer_from(context.sender, new_state, from, t.to, t.amount).0;
+        state = core_transfer_from(context.sender, state, from, t.to, t.amount);
     }
-    (new_state, vec![])
+    state
 }
 
 /// Allows `spender` to withdraw from the owners account multiple times, up to the `amount`.
@@ -286,7 +294,7 @@ pub fn bulk_transfer_from(
 ///
 /// * `context`: [`ContractContext`], the context for the action call.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `spender`: [`Address`], the address of the spender.
 ///
@@ -294,17 +302,16 @@ pub fn bulk_transfer_from(
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 #[action(shortname = 0x05)]
 pub fn approve(
     context: ContractContext,
-    state: TokenState,
+    mut state: TokenState,
     spender: Address,
     amount: u128,
-) -> (TokenState, Vec<EventGroup>) {
-    let mut new_state = state;
-    new_state.update_allowance(context.sender, spender, amount);
-    (new_state, vec![])
+) -> TokenState {
+    state.update_allowance(context.sender, spender, amount);
+    state
 }
 
 /// Transfers `amount` of tokens to address `to` from the caller.
@@ -316,7 +323,7 @@ pub fn approve(
 ///
 /// * `sender`: [`Address`], the sender of the transaction.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `to`: [`Address`], the address to transfer to.
 ///
@@ -324,30 +331,29 @@ pub fn approve(
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 pub fn core_transfer(
     sender: Address,
-    state: TokenState,
+    mut state: TokenState,
     to: Address,
     amount: u128,
-) -> (TokenState, Vec<EventGroup>) {
-    let mut new_state = state;
-    let from_amount = new_state.balance_of(sender);
+) -> TokenState {
+    let from_amount = state.balance_of(&sender);
     let o_new_from_amount = from_amount.checked_sub(amount);
     match o_new_from_amount {
         Some(new_from_amount) => {
-            new_state.balances.insert(sender, new_from_amount);
+            state.balances.insert_balance(sender, new_from_amount);
         }
         None => {
-            panic!("Underflow in transfer - owner did not have enough tokens");
+            panic!(
+                "Insufficient funds for transfer: {}/{}",
+                from_amount, amount
+            );
         }
     }
-    let to_amount = new_state.balance_of(to);
-    new_state.balances.insert(to, to_amount.add(amount));
-    if new_state.balance_of(sender) == 0 {
-        new_state.balances.remove(&sender);
-    };
-    (new_state, vec![])
+    let to_amount = state.balance_of(&to);
+    state.balances.insert_balance(to, to_amount.add(amount));
+    state
 }
 
 /// Transfers `amount` of tokens from address `from` to address `to`.\
@@ -360,7 +366,7 @@ pub fn core_transfer(
 ///
 /// * `sender`: [`Address`], the sender of the transaction.
 ///
-/// * `state`: [`TokenContractState`], the current state of the contract.
+/// * `state`: [`TokenState`], the current state of the contract.
 ///
 /// * `from`: [`Address`], the address to transfer from.
 ///
@@ -370,24 +376,26 @@ pub fn core_transfer(
 ///
 /// ### Returns
 ///
-/// The new state object of type [`TokenContractState`] with an updated ledger.
+/// The new state object of type [`TokenState`] with an updated ledger.
 pub fn core_transfer_from(
     sender: Address,
-    state: TokenState,
+    mut state: TokenState,
     from: Address,
     to: Address,
     amount: u128,
-) -> (TokenState, Vec<EventGroup>) {
-    let mut new_state = state;
-    let from_allowed = new_state.allowance(from, sender);
+) -> TokenState {
+    let from_allowed = state.allowance(&from, &sender);
     let o_new_allowed_amount = from_allowed.checked_sub(amount);
     match o_new_allowed_amount {
         Some(new_allowed_amount) => {
-            new_state.update_allowance(from, sender, new_allowed_amount);
+            state.update_allowance(from, sender, new_allowed_amount);
         }
         None => {
-            panic!("Underflow in transfer_from - tokens has not been approved for transfer");
+            panic!(
+                "Insufficient allowance for transfer_from: {}/{}",
+                from_allowed, amount
+            );
         }
     }
-    core_transfer(from, new_state, to, amount)
+    core_transfer(from, state, to, amount)
 }
