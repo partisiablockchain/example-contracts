@@ -73,8 +73,7 @@ fn read_opened_variable_data<T: ReadWriteState>(
     variable_id: &SecretVarId,
 ) -> Option<T> {
     let variable = zk_state.get_variable(*variable_id)?;
-    let buffer = variable.data.as_ref()?;
-    Some(T::state_read_from(&mut buffer.as_slice()))
+    variable.open_value()
 }
 
 /// State of the contract.
@@ -91,7 +90,7 @@ fn initialize(ctx: ContractContext, zk_state: ZkState<SecretVarMetadata>) -> Con
     ContractState { responses: vec![] }
 }
 
-/// Resets contract state, deleting all received input.
+/// Resets contract state, deleting all received input and secret variables.
 #[action(shortname = 0x00, zk = true)]
 fn reset_state(
     context: ContractContext,
@@ -99,7 +98,20 @@ fn reset_state(
     zk_state: ZkState<SecretVarMetadata>,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
     let new_state = ContractState { responses: vec![] };
-    (new_state, vec![], vec![])
+    let all_variables = zk_state
+        .secret_variables
+        .iter()
+        .chain(zk_state.pending_inputs.iter())
+        .map(|v| v.variable_id)
+        .collect();
+
+    (
+        new_state,
+        vec![],
+        vec![ZkStateChange::DeleteVariables {
+            variables_to_delete: all_variables,
+        }],
+    )
 }
 
 /// Add an open input to the list
@@ -183,11 +195,5 @@ fn save_opened_variable(
     let variable_id = opened_variables.get(0).unwrap();
     let result: Response = read_opened_variable_data(&zk_state, variable_id).unwrap();
     new_state.responses.push(result);
-    (
-        new_state,
-        vec![],
-        vec![ZkStateChange::OutputComplete {
-            variables_to_delete: vec![],
-        }],
-    )
+    (new_state, vec![], vec![])
 }

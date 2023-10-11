@@ -35,9 +35,9 @@ fn initialize(ctx: ContractContext, zk_state: ZkState<SecretVarMetadata>) -> Con
     }
 }
 
-/// Resets contract state, deleting all received input.
+/// Resets contract, deleting all received input and secret variables.
 #[action(shortname = 0x00, zk = true)]
-fn reset_state(
+fn reset_contract(
     context: ContractContext,
     state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
@@ -45,7 +45,20 @@ fn reset_state(
     let new_state = ContractState {
         opened_inputs: vec![],
     };
-    (new_state, vec![], vec![])
+    let all_variables = zk_state
+        .secret_variables
+        .iter()
+        .chain(zk_state.pending_inputs.iter())
+        .map(|v| v.variable_id)
+        .collect();
+
+    (
+        new_state,
+        vec![],
+        vec![ZkStateChange::DeleteVariables {
+            variables_to_delete: all_variables,
+        }],
+    )
 }
 
 /// Adds a secret input variable.
@@ -117,13 +130,7 @@ fn save_opened_variable(
     let result: i32 = read_variable_as_i32(&zk_state, *opened_variables.get(0).unwrap());
     new_state.opened_inputs.push(result);
 
-    (
-        new_state,
-        vec![],
-        vec![ZkStateChange::OutputComplete {
-            variables_to_delete: vec![],
-        }],
-    )
+    (new_state, vec![], vec![])
 }
 
 fn read_variable_as_i32(
