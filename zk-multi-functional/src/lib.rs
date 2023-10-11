@@ -123,18 +123,12 @@ fn open_result_variable(
     mut state: ContractState,
     zk_state: ZkState<SecretVarType>,
     opened_variables: Vec<SecretVarId>,
-) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
+) -> ContractState {
     let opened_variable = zk_state
         .get_variable(*opened_variables.get(0).unwrap())
         .unwrap();
     state.latest_produced_value = Some(read_variable_u32_le(opened_variable));
-    (
-        state,
-        vec![],
-        vec![ZkStateChange::OutputComplete {
-            variables_to_delete: vec![],
-        }],
-    )
+    state
 }
 
 /// Reads a variable's data as an u32.

@@ -42,8 +42,6 @@ struct ContractState {
     average_salary_result: Option<u32>,
     /// Will contain the number of employees after starting the computation
     num_employees: Option<u32>,
-    /// Num failed validation
-    num_failed_validation: Option<u32>,
 }
 
 /// Initializes contract
@@ -55,7 +53,6 @@ fn initialize(ctx: ContractContext, zk_state: ZkState<SecretVarType>) -> Contrac
         administrator: ctx.sender,
         average_salary_result: None,
         num_employees: None,
-        num_failed_validation: None,
     }
 }
 

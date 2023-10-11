@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.partisiablockchain.language</groupId>
-  <artifactId>java-contract-test</artifactId>
+  <artifactId>example-contracts-java-test</artifactId>
   <version>4.18.0</version>
 
   <licenses>
@@ -32,7 +32,7 @@
   <parent>
     <groupId>com.partisiablockchain</groupId>
     <artifactId>pom</artifactId>
-    <version>4.16.0</version>
+    <version>4.31.0</version>
   </parent>
 
   <properties>
@@ -53,59 +53,59 @@
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>abi-client</artifactId>
-      <version>4.22.0</version>
+      <version>4.33.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>sys-binder</artifactId>
-      <version>4.14.0</version>
+      <version>4.23.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>fee</artifactId>
-      <version>4.19.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.partisiablockchain.governance</groupId>
-      <artifactId>pubdeploy</artifactId>
       <version>4.28.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
+      <artifactId>pubdeploy</artifactId>
+      <version>4.41.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>routing</artifactId>
-      <version>4.16.0</version>
+      <version>4.25.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>pub-wasm-binder</artifactId>
-      <version>4.19.0</version>
+      <version>4.34.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>real-wasm-binder</artifactId>
-      <version>4.20.0</version>
+      <version>4.33.0</version>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.real</groupId>
       <artifactId>deploy</artifactId>
-      <version>4.25.0</version>
+      <version>4.39.0</version>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>junit-contract-test</artifactId>
-      <version>4.66.0</version>
+      <version>4.102.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.consensus.fasttrack</groupId>
       <artifactId>plugin</artifactId>
-      <version>4.15.0</version>
+      <version>4.24.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -126,19 +126,37 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-    <groupId>org.junit.platform</groupId>
-    <artifactId>junit-platform-launcher</artifactId>
-    <version>1.10.0</version>
-    <scope>test</scope>
-  </dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <version>1.10.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
     <plugins>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+         <execution>
+          <phase>generate-test-sources</phase>
+          <goals>
+           <goal>add-test-source</goal>
+          </goals>
+          <configuration>
+            <sources>
+              <source>${project.basedir}/target/generated-test-sources/generated-abi</source>
+            </sources>
+          </configuration>
+         </execution>
+        </executions>
+        </plugin>
+      <plugin>
         <groupId>com.partisiablockchain.language</groupId>
         <artifactId>abi-generation-maven-plugin</artifactId>
-        <version>4.22.0</version>
+        <version>4.33.0</version>
         <executions>
           <execution>
             <phase>generate-test-sources</phase>
