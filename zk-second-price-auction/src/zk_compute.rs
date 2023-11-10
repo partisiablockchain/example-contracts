@@ -3,9 +3,9 @@
 use pbc_zk::*;
 
 #[zk_compute(shortname = 0x61)]
-pub fn zk_compute() -> (Sbi32, Sbi32) {
+pub fn run_auction() -> (Sbi32, Sbi32) {
     // Initialize state
-    let mut highest_bidder: Sbi32 = Sbi32::from(load_metadata::<i32>(1));
+    let mut highest_bidder: Sbi32 = Sbi32::from(0);
     let mut highest_amount: Sbi32 = Sbi32::from(0);
     let mut second_highest_amount: Sbi32 = Sbi32::from(0);
 

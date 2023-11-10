@@ -8,11 +8,12 @@ extern crate pbc_lib;
 
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::ZkClosed;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
+
+mod zk_compute;
 
 /// Secret variable metadata.
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
@@ -21,9 +22,6 @@ pub struct SecretVarType {}
 
 /// The maximum size of MPC variables.
 const BITLENGTH_OF_SECRET_VARIABLES: u32 = 32;
-
-const ZK_COMPUTE_4: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
-const ZK_COMPUTE_IDENTITY: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x62);
 
 /// This contract's state
 #[state]
@@ -70,10 +68,9 @@ fn inputted_variable(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation_with_inputs(
-            ZK_COMPUTE_IDENTITY,
-            vec![SecretVarType {}],
-            vec![inputted_variable],
+        vec![zk_compute::identity_sbi32_start(
+            inputted_variable,
+            &SecretVarType {},
         )],
     )
 }
@@ -88,10 +85,7 @@ pub fn produce_4(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation(
-            ZK_COMPUTE_4,
-            vec![SecretVarType {}],
-        )],
+        vec![zk_compute::produce_4_start(&SecretVarType {})],
     )
 }
 

@@ -1,13 +1,13 @@
 [package]
 name = "ping-contract"
-version = "1.112.0"
-description = "Example contract for the Partisia Blockchain."
-homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
-repository = "https://gitlab.com/partisiablockchain/language/example-contracts"
-documentation = "https://gitlab.com/partisiablockchain/language/example-contracts"
 readme = "README.md"
-edition = "2021"
-license = "MIT"
+version.workspace = true
+description.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [lib]
 crate-type = ['rlib', 'cdylib']
@@ -20,6 +20,7 @@ read_write_rpc_derive = { workspace = true }
 read_write_state_derive = { workspace = true }
 create_type_spec_derive = { workspace = true }
 pbc_contract_codegen = { workspace = true }
+pbc_zk = { workspace = true }
 
 [features]
 abi = ["pbc_contract_common/abi", "pbc_contract_codegen/abi", "pbc_traits/abi", "create_type_spec_derive/abi"]
