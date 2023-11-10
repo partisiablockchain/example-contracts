@@ -41,10 +41,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
 
     votingSimple = blockchain.deployZkContract(account1, VOTING_SIMPLE_BYTES, initRpc);
 
-    byte[] contractByteState = blockchain.getContractState(votingSimple);
-
     ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ContractState.deserialize(contractByteState);
+        ZkVotingSimple.ContractState.deserialize(blockchain.getContractState(votingSimple));
 
     Assertions.assertThat(state).isNotNull();
   }
@@ -64,10 +62,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
 
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    byte[] contractByteState = blockchain.getContractState(votingSimple);
-
     ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ContractState.deserialize(contractByteState);
+        ZkVotingSimple.ContractState.deserialize(blockchain.getContractState(votingSimple));
 
     Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(1, 5, false));
   }
@@ -87,10 +83,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
 
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    byte[] contractByteState = blockchain.getContractState(votingSimple);
-
     ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ContractState.deserialize(contractByteState);
+        ZkVotingSimple.ContractState.deserialize(blockchain.getContractState(votingSimple));
 
     Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(6, 0, true));
   }

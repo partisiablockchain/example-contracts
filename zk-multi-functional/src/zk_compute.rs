@@ -8,6 +8,6 @@ pub fn produce_4() -> Sbi32 {
 
 /// Returns the value as is
 #[zk_compute(shortname = 0x62)]
-pub fn identity_sbi32(id: i32) -> Sbi32 {
+pub fn identity_sbi32(id: SecretVarId) -> Sbi32 {
     load_sbi::<Sbi32>(id)
 }

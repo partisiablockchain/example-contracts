@@ -4,9 +4,10 @@
 #[macro_use]
 extern crate pbc_contract_codegen;
 
+mod zk_compute;
+
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
@@ -17,8 +18,6 @@ struct SecretVarMetadata {}
 
 /// Input is a 32 bit integer.
 const BITLENGTH_OF_SECRET_SALARY_VARIABLES: u32 = 32;
-
-const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 /// State of the contract.
 #[state]
@@ -92,10 +91,9 @@ fn output_variables(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation_with_inputs(
-            ZK_COMPUTE,
-            vec![SecretVarMetadata {}],
-            vec![variable_id],
+        vec![zk_compute::identity_start(
+            variable_id,
+            &SecretVarMetadata {},
         )],
     )
 }

@@ -8,9 +8,10 @@ use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use read_write_state_derive::ReadWriteState;
+
+mod zk_compute;
 
 /// Secret variable metadata. Indicates if the variable is a vote or the number of counted yes votes
 #[derive(ReadWriteState, Debug)]
@@ -28,8 +29,6 @@ enum SecretVarType {
 
 /// The maximum size of MPC variables.
 const BITLENGTH_OF_SECRET_VOTE_VARIABLES: u32 = 32;
-
-const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 #[derive(ReadWriteState, CreateTypeSpec, Clone)]
 struct VoteResult {
@@ -137,12 +136,9 @@ fn start_vote_counting(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation(
-            ZK_COMPUTE,
-            vec![SecretVarMetadata {
-                variable_type: SecretVarType::CountedYesVotes,
-            }],
-        )],
+        vec![zk_compute::count_yes_votes_start(&SecretVarMetadata {
+            variable_type: SecretVarType::CountedYesVotes,
+        })],
     )
 }
 

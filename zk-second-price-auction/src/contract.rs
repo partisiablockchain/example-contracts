@@ -5,11 +5,12 @@
 extern crate pbc_contract_codegen;
 extern crate pbc_contract_common;
 
+mod zk_compute;
+
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::shortname::ShortnameZkComputation;
 use pbc_contract_common::zk::{
     AttestationId, CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange,
 };
@@ -37,8 +38,6 @@ const BITLENGTH_OF_SECRET_BID_VARIABLES: [u32; 1] = [32];
 
 /// Number of bids required before starting auction computation.
 const MIN_NUM_BIDDERS: u32 = 3;
-
-const ZK_COMPUTE: ShortnameZkComputation = ShortnameZkComputation::from_u32(0x61);
 
 /// Type of tracking bid amount
 type BidAmount = i32;
@@ -202,17 +201,14 @@ fn compute_winner(
     (
         state,
         vec![],
-        vec![ZkStateChange::start_computation(
-            ZK_COMPUTE,
-            vec![
-                SecretVarMetadata {
-                    bidder_id: BidderId { id: -1 },
-                },
-                SecretVarMetadata {
-                    bidder_id: BidderId { id: -1 },
-                },
-            ],
-        )],
+        vec![zk_compute::run_auction_start([
+            &SecretVarMetadata {
+                bidder_id: BidderId { id: -1 },
+            },
+            &SecretVarMetadata {
+                bidder_id: BidderId { id: -1 },
+            },
+        ])],
     )
 }
 
