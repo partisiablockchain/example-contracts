@@ -105,7 +105,7 @@ public final class MultiVotingTest extends JunitContractTest {
     Assertions.assertThatThrownBy(
             () -> blockchain.sendAction(multiVotingOwner, multiVoting, addVotingContractRpc, 1200))
         .isInstanceOf(ActionFailureException.class)
-        .hasMessageContaining("Out of instruction gas!");
+        .hasMessageContaining("Out of instruction cycles!");
   }
 
   /** The multi-voting contract cannot deploy a voting contract with incorrectly formatted WASM. */

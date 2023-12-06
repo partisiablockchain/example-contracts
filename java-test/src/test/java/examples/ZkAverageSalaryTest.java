@@ -42,7 +42,7 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
 
     byte[] initialize = AverageSalary.initialize();
 
-    averageSalary = blockchain.deployZkContract(account1, CONTRACT_BYTES, initialize);
+    averageSalary = blockchain.deployZkContract(account1, CONTRACT_BYTES, initialize, 1_200_000);
 
     AverageSalary.ContractState state =
         AverageSalary.ContractState.deserialize(blockchain.getContractState(averageSalary));

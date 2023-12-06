@@ -9,6 +9,7 @@ use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
+use pbc_zk::Sbi32;
 use read_write_state_derive::ReadWriteState;
 
 mod zk_compute;
@@ -26,9 +27,6 @@ enum SecretVarType {
     Vote = 1,
     CountedYesVotes = 2,
 }
-
-/// The maximum size of MPC variables.
-const BITLENGTH_OF_SECRET_VOTE_VARIABLES: u32 = 32;
 
 #[derive(ReadWriteState, CreateTypeSpec, Clone)]
 struct VoteResult {
@@ -72,8 +70,6 @@ fn initialize(
 }
 
 /// Adds another vote.
-///
-/// The ZkInputDef encodes that the variable should have size [`BITLENGTH_OF_SECRET_VOTE_VARIABLES`].
 #[zk_on_secret_input(shortname = 0x40)]
 fn add_vote(
     context: ContractContext,
@@ -82,7 +78,7 @@ fn add_vote(
 ) -> (
     ContractState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata>,
+    ZkInputDef<SecretVarMetadata, Sbi32>,
 ) {
     assert!(
         context.block_production_time < state.deadline_voting_time,
@@ -99,13 +95,9 @@ fn add_vote(
         "Each voter is only allowed to send one vote variable. Sender: {:?}",
         context.sender
     );
-    let input_def = ZkInputDef {
-        seal: false,
-        metadata: SecretVarMetadata {
-            variable_type: SecretVarType::Vote,
-        },
-        expected_bit_lengths: vec![BITLENGTH_OF_SECRET_VOTE_VARIABLES],
-    };
+    let input_def = ZkInputDef::with_metadata(SecretVarMetadata {
+        variable_type: SecretVarType::Vote,
+    });
     (state, vec![], input_def)
 }
 
