@@ -15,6 +15,7 @@ use pbc_contract_common::zk::{
     AttestationId, CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange,
 };
 use pbc_traits::{ReadRPC, ReadWriteState, WriteRPC};
+use pbc_zk::Sbi32;
 use read_write_rpc_derive::ReadRPC;
 use read_write_rpc_derive::WriteRPC;
 use read_write_state_derive::ReadWriteState;
@@ -32,9 +33,6 @@ struct BidderId {
 struct SecretVarMetadata {
     bidder_id: BidderId,
 }
-
-/// The size of the MPC bid input variables.
-const BITLENGTH_OF_SECRET_BID_VARIABLES: [u32; 1] = [32];
 
 /// Number of bids required before starting auction computation.
 const MIN_NUM_BIDDERS: u32 = 3;
@@ -122,8 +120,6 @@ fn register_bidder(
 }
 
 /// Adds another bid variable to the ZkState.
-///
-/// The ZkInputDef encodes that variables should have size [`BITLENGTH_OF_SECRET_BID_VARIABLES`].
 #[zk_on_secret_input(shortname = 0x40)]
 fn add_bid(
     context: ContractContext,
@@ -132,7 +128,7 @@ fn add_bid(
 ) -> (
     ContractState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata>,
+    ZkInputDef<SecretVarMetadata, Sbi32>,
 ) {
     let bidder_info = state
         .registered_bidders
@@ -155,13 +151,9 @@ fn add_bid(
         bidder_info.bidder_id,
     );
 
-    let input_def = ZkInputDef {
-        seal: false,
-        metadata: SecretVarMetadata {
-            bidder_id: bidder_info.bidder_id,
-        },
-        expected_bit_lengths: BITLENGTH_OF_SECRET_BID_VARIABLES.to_vec(),
-    };
+    let input_def = ZkInputDef::with_metadata(SecretVarMetadata {
+        bidder_id: bidder_info.bidder_id,
+    });
 
     (state, vec![], input_def)
 }

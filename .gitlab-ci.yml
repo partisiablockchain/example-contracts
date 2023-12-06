@@ -4,13 +4,13 @@ variables:
 include:
 - project: 'secata-public/pom/shared-ci'
   file: 'contract-java-test.yml'
-  ref: 'v.2.23.0'
+  ref: 'v.2.28.0'
 - project: 'secata-public/pom/shared-ci'
   file: 'rust-contract.yml'
-  ref: 'v.2.23.0'
+  ref: 'v.2.28.0'
 - project: 'secata-public/pom/shared-ci'
   file: 'jar-codequality.yml'
-  ref: 'v.2.23.0'
+  ref: 'v.2.28.0'
 
 compile-contracts:
   extends: .cargo

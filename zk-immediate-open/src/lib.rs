@@ -9,15 +9,13 @@ mod zk_compute;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
+use pbc_zk::Sbi32;
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
 /// Uses no additional metadata for the zk secret input.
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
 struct SecretVarMetadata {}
-
-/// Input is a 32 bit integer.
-const BITLENGTH_OF_SECRET_SALARY_VARIABLES: u32 = 32;
 
 /// State of the contract.
 #[state]
@@ -69,13 +67,9 @@ fn secret_input(
 ) -> (
     ContractState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata>,
+    ZkInputDef<SecretVarMetadata, Sbi32>,
 ) {
-    let input_def = ZkInputDef {
-        seal: false,
-        metadata: SecretVarMetadata {},
-        expected_bit_lengths: vec![BITLENGTH_OF_SECRET_SALARY_VARIABLES],
-    };
+    let input_def = ZkInputDef::with_metadata(SecretVarMetadata {});
 
     (state, vec![], input_def)
 }

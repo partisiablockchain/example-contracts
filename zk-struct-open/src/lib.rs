@@ -61,11 +61,6 @@ pub struct Response {
     /// Wealth
     pub wealth: i128,
 }
-
-impl Response {
-    const BITS: u32 = 8 + 16 + 16 + 128;
-}
-
 /// Reads the data from a revealed secret variable
 fn read_opened_variable_data<T: ReadWriteState>(
     zk_state: &ZkState<SecretVarMetadata>,
@@ -135,13 +130,9 @@ fn secret_input(
 ) -> (
     ContractState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata>,
+    ZkInputDef<SecretVarMetadata, SecretResponse>,
 ) {
-    let input_def = ZkInputDef {
-        seal: false,
-        metadata: SecretVarMetadata {},
-        expected_bit_lengths: vec![Response::BITS],
-    };
+    let input_def = ZkInputDef::with_metadata(SecretVarMetadata {});
 
     (state, vec![], input_def)
 }

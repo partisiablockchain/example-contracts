@@ -10,6 +10,7 @@ use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::ZkClosed;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
+use pbc_zk::Sbi32;
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
@@ -19,9 +20,6 @@ mod zk_compute;
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
 #[repr(C)]
 pub struct SecretVarType {}
-
-/// The maximum size of MPC variables.
-const BITLENGTH_OF_SECRET_VARIABLES: u32 = 32;
 
 /// This contract's state
 #[state]
@@ -39,19 +37,17 @@ pub fn initialize(ctx: ContractContext, zk_state: ZkState<SecretVarType>) -> Con
 }
 
 /// Requests the opening of the given input
-///
-/// The ZkInputDef encodes that the variable should have size [`BITLENGTH_OF_SECRET_VARIABLES`].
 #[zk_on_secret_input(shortname = 0x40)]
 pub fn add_variable(
     context: ContractContext,
     state: ContractState,
     zk_state: ZkState<SecretVarType>,
-) -> (ContractState, Vec<EventGroup>, ZkInputDef<SecretVarType>) {
-    let input_def = ZkInputDef {
-        seal: false,
-        metadata: SecretVarType {},
-        expected_bit_lengths: vec![BITLENGTH_OF_SECRET_VARIABLES],
-    };
+) -> (
+    ContractState,
+    Vec<EventGroup>,
+    ZkInputDef<SecretVarType, Sbi32>,
+) {
+    let input_def = ZkInputDef::with_metadata(SecretVarType {});
     (state, vec![], input_def)
 }
 
