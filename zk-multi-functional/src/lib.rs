@@ -117,7 +117,7 @@ fn open_result_variable(
     let opened_variable = zk_state
         .get_variable(*opened_variables.get(0).unwrap())
         .unwrap();
-    state.latest_produced_value = Some(read_variable_u32_le(opened_variable));
+    state.latest_produced_value = Some(read_variable_u32_le(&opened_variable));
     state
 }
 

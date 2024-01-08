@@ -79,7 +79,7 @@ pub fn initialize(
 #[action]
 pub fn add_voter(
     ctx: ContractContext,
-    state: MultiVotingState,
+    mut state: MultiVotingState,
     voter: Address,
 ) -> (MultiVotingState, Vec<EventGroup>) {
     assert_eq!(ctx.sender, state.owner, "Only owner can add voters");
@@ -87,9 +87,8 @@ pub fn add_voter(
     if voter_exists {
         panic!("Voter already exists");
     }
-    let mut new_state = state;
-    new_state.eligible_voters.push(voter);
-    (new_state, vec![])
+    state.eligible_voters.push(voter);
+    (state, vec![])
 }
 
 /// Removes a voter from eligible voters. This voter can no longer vote on voting contracts.
@@ -106,18 +105,17 @@ pub fn add_voter(
 #[action]
 pub fn remove_voter(
     ctx: ContractContext,
-    state: MultiVotingState,
+    mut state: MultiVotingState,
     voter: Address,
 ) -> (MultiVotingState, Vec<EventGroup>) {
     assert_eq!(ctx.sender, state.owner, "Only owner can remove voters");
-    let mut new_state = state;
-    let index = new_state
+    let index = state
         .eligible_voters
         .iter()
         .position(|x| *x == voter)
         .expect("Voter does not exist");
-    new_state.eligible_voters.remove(index);
-    (new_state, vec![])
+    state.eligible_voters.remove(index);
+    (state, vec![])
 }
 
 /// Deploys a new voting contract with given proposal id. The voting contract is deployed with
@@ -138,7 +136,7 @@ pub fn remove_voter(
 #[action]
 pub fn add_voting_contract(
     ctx: ContractContext,
-    state: MultiVotingState,
+    mut state: MultiVotingState,
     p_id: u64,
     deadline: i64,
 ) -> (MultiVotingState, Vec<EventGroup>) {
@@ -147,9 +145,7 @@ pub fn add_voting_contract(
         panic!("Proposal id already exists");
     }
 
-    let mut new_state = state;
-
-    new_state.voting_contracts.insert(p_id, None);
+    state.voting_contracts.insert(p_id, None);
 
     let voting_address = Address {
         address_type: AddressType::PublicContract,
@@ -160,11 +156,11 @@ pub fn add_voting_contract(
 
     event_group
         .call(PUB_DEPLOY_ADDRESS, Shortname::from_u32(1))
-        .argument(new_state.voting_contract_wasm.clone())
-        .argument(new_state.voting_contract_abi.clone())
+        .argument(state.voting_contract_wasm.clone())
+        .argument(state.voting_contract_abi.clone())
         .argument(create_voting_init_bytes(
             p_id,
-            &new_state.eligible_voters,
+            &state.eligible_voters,
             deadline,
         ))
         .done();
@@ -176,7 +172,7 @@ pub fn add_voting_contract(
         .argument(voting_address)
         .done();
 
-    (new_state, vec![event_group.build()])
+    (state, vec![event_group.build()])
 }
 
 /// Callback for adding a new voting contract. If the deployment was unsuccessful the entry in
@@ -198,14 +194,13 @@ pub fn add_voting_contract(
 pub fn add_voting_contract_callback(
     ctx: ContractContext,
     callback_ctx: CallbackContext,
-    state: MultiVotingState,
+    mut state: MultiVotingState,
     p_id: u64,
     voting_address: Address,
 ) -> (MultiVotingState, Vec<EventGroup>) {
-    let mut new_state = state;
     if !callback_ctx.results[0].succeeded {
-        new_state.voting_contracts.remove(&p_id);
-        (new_state, vec![])
+        state.voting_contracts.remove(&p_id);
+        (state, vec![])
     } else {
         let mut event_group = EventGroup::builder();
 
@@ -216,7 +211,7 @@ pub fn add_voting_contract_callback(
             .argument(voting_address)
             .done();
 
-        (new_state, vec![event_group.build()])
+        (state, vec![event_group.build()])
     }
 }
 
@@ -237,19 +232,16 @@ pub fn add_voting_contract_callback(
 pub fn voting_contract_exists_callback(
     ctx: ContractContext,
     callback_ctx: CallbackContext,
-    state: MultiVotingState,
+    mut state: MultiVotingState,
     p_id: u64,
     voting_address: Address,
 ) -> (MultiVotingState, Vec<EventGroup>) {
-    let mut new_state = state;
     if !callback_ctx.results[0].succeeded {
-        new_state.voting_contracts.remove(&p_id);
+        state.voting_contracts.remove(&p_id);
     } else {
-        new_state
-            .voting_contracts
-            .insert(p_id, Some(voting_address));
+        state.voting_contracts.insert(p_id, Some(voting_address));
     }
-    (new_state, vec![])
+    (state, vec![])
 }
 
 fn create_voting_init_bytes(proposal_id: u64, voters: &Vec<Address>, deadline: i64) -> Vec<u8> {

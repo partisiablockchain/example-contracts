@@ -1,14 +1,15 @@
+use create_type_spec_derive::CreateTypeSpec;
 use pbc_zk::*;
 
 #[allow(unused)]
-#[derive(pbc_zk::SecretBinary, Clone)]
+#[derive(pbc_zk::SecretBinary, Clone, CreateTypeSpec)]
 pub struct SecretPosition {
     x: Sbi8,
     y: Sbi8,
 }
 
 #[allow(unused)]
-#[derive(pbc_zk::SecretBinary, Clone)]
+#[derive(pbc_zk::SecretBinary, Clone, CreateTypeSpec)]
 pub struct SecretResponse {
     age: Sbi8,
     height: Sbi16,
