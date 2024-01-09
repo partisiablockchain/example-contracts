@@ -146,7 +146,7 @@ fn add_bid(
             .secret_variables
             .iter()
             .chain(zk_state.pending_inputs.iter())
-            .all(|v| v.owner != context.sender),
+            .all(|(_, v)| v.owner != context.sender),
         "Each bidder is only allowed to send one bid. : {:?}",
         bidder_info.bidder_id,
     );
@@ -276,6 +276,11 @@ fn auction_results_attested(
     let attestation = zk_state.get_attestation(attestation_id).unwrap();
 
     assert_eq!(attestation.signatures.len(), 4, "Must have four signatures");
+
+    assert!(
+        attestation.signatures.iter().all(|sig| sig.is_some()),
+        "Attestation must be complete"
+    );
 
     let auction_result = AuctionResult::rpc_read_from(&mut attestation.data.as_slice());
 

@@ -80,15 +80,14 @@ pub fn initialize(
 /// The updated vote state reflecting the newly cast vote.
 ///
 #[action(shortname = 0x01)]
-pub fn vote(ctx: ContractContext, state: VoteState, vote: bool) -> VoteState {
+pub fn vote(ctx: ContractContext, mut state: VoteState, vote: bool) -> VoteState {
     assert!(
         state.result.is_none() && ctx.block_production_time < state.deadline_utc_millis,
         "The deadline has passed"
     );
     assert!(state.voters.contains(&ctx.sender), "Not an eligible voter");
-    let mut new_state = state;
-    new_state.votes.insert(ctx.sender, vote);
-    new_state
+    state.votes.insert(ctx.sender, vote);
+    state
 }
 
 /// Count the votes and publish the result.
@@ -104,7 +103,7 @@ pub fn vote(ctx: ContractContext, state: VoteState, vote: bool) -> VoteState {
 /// The updated state reflecting the result of the vote.
 ///
 #[action(shortname = 0x02)]
-pub fn count(ctx: ContractContext, state: VoteState) -> VoteState {
+pub fn count(ctx: ContractContext, mut state: VoteState) -> VoteState {
     assert_eq!(state.result, None, "The votes have already been counted");
     assert!(
         ctx.block_production_time >= state.deadline_utc_millis,
@@ -112,7 +111,6 @@ pub fn count(ctx: ContractContext, state: VoteState) -> VoteState {
     );
     let voters_approving = state.votes.values().filter(|vote| **vote).count();
     let vote_passed = voters_approving > state.voters.len() / 2;
-    let mut new_state = state;
-    new_state.result = Some(vote_passed);
-    new_state
+    state.result = Some(vote_passed);
+    state
 }

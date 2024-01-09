@@ -46,7 +46,7 @@ fn initialize(_ctx: ContractContext) -> ContractState {
 #[action(shortname = 0x01)]
 fn give_nickname(
     _ctx: ContractContext,
-    state: ContractState,
+    mut state: ContractState,
     key: Address,
     value: String,
 ) -> ContractState {
@@ -68,7 +68,7 @@ fn give_nickname(
 /// The state unchanged. Note that AvlTreeMap operations do not create a new state that must be
 /// returned. Instead it updates the underlying map in mutable manner.
 #[action(shortname = 0x02)]
-fn remove_nickname(_ctx: ContractContext, state: ContractState, key: Address) -> ContractState {
+fn remove_nickname(_ctx: ContractContext, mut state: ContractState, key: Address) -> ContractState {
     state.map.remove(&key);
 
     state

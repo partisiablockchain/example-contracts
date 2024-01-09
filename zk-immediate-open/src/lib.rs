@@ -46,7 +46,7 @@ fn reset_contract(
         .secret_variables
         .iter()
         .chain(zk_state.pending_inputs.iter())
-        .map(|v| v.variable_id)
+        .map(|(v, _)| v)
         .collect();
 
     (

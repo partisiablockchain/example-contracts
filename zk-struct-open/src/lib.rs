@@ -6,37 +6,17 @@ extern crate pbc_contract_codegen;
 
 mod zk_compute;
 
+use crate::zk_compute::SecretResponse;
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use pbc_traits::ReadWriteState;
-use pbc_zk::{Sbi128, Sbi16, Sbi8, SecretBinary};
 use read_write_rpc_derive::{ReadRPC, ReadWriteRPC};
 use read_write_state_derive::ReadWriteState;
 
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
 struct SecretVarMetadata {}
-
-/// Secret position used in the secret input struct
-#[derive(CreateTypeSpec, SecretBinary)]
-#[allow(dead_code)]
-struct SecretPosition {
-    /// x position
-    x: Sbi8,
-    /// y position
-    y: Sbi8,
-}
-
-/// Secret struct used as the secret input type
-#[derive(CreateTypeSpec, SecretBinary)]
-#[allow(dead_code)]
-struct SecretResponse {
-    age: Sbi8,
-    height: Sbi16,
-    position: SecretPosition,
-    wealth: Sbi128,
-}
 
 /// Public version of the Position struct used in the secret input struct
 #[derive(ReadWriteState, CreateTypeSpec, ReadRPC, Clone)]
@@ -96,7 +76,7 @@ fn reset_state(
         .secret_variables
         .iter()
         .chain(zk_state.pending_inputs.iter())
-        .map(|v| v.variable_id)
+        .map(|(v, _)| v)
         .collect();
 
     (
@@ -112,13 +92,12 @@ fn reset_state(
 #[action(shortname = 0x10, zk = true)]
 fn open_input(
     context: ContractContext,
-    state: ContractState,
+    mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
     response: Response,
 ) -> ContractState {
-    let mut new_state = state;
-    new_state.responses.push(response);
-    new_state
+    state.responses.push(response);
+    state
 }
 
 /// Adds a secret input variable of type SecretResponse.
@@ -176,13 +155,12 @@ fn computation_complete(
 #[zk_on_variables_opened]
 fn save_opened_variable(
     context: ContractContext,
-    state: ContractState,
+    mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
     opened_variables: Vec<SecretVarId>,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
-    let mut new_state = state;
     let variable_id = opened_variables.get(0).unwrap();
     let result: Response = read_opened_variable_data(&zk_state, variable_id).unwrap();
-    new_state.responses.push(result);
-    (new_state, vec![], vec![])
+    state.responses.push(result);
+    (state, vec![], vec![])
 }

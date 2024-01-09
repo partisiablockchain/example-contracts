@@ -91,7 +91,7 @@ fn add_vote(
             .secret_variables
             .iter()
             .chain(zk_state.pending_inputs.iter())
-            .all(|v| v.owner != context.sender),
+            .all(|(_, v)| v.owner != context.sender),
         "Each voter is only allowed to send one vote variable. Sender: {:?}",
         context.sender
     );
@@ -172,7 +172,7 @@ fn open_sum_variable(
     let total_votes = zk_state
         .secret_variables
         .iter()
-        .filter(|x| x.metadata.variable_type == SecretVarType::Vote)
+        .filter(|(_, x)| x.metadata.variable_type == SecretVarType::Vote)
         .count();
     let votes_against = (total_votes as u32) - votes_for;
 

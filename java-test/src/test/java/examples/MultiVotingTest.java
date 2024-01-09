@@ -7,6 +7,7 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
+import com.partisiablockchain.language.testenvironment.TxExecution;
 import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
@@ -75,7 +76,10 @@ public final class MultiVotingTest extends JunitContractTest {
   @ContractTest(previous = "setup")
   public void deployVotingContractTwice() {
     byte[] deployVotingContractRpc = MultiVotingContract.addVotingContract(10, 60 * 60 * 1000);
-    blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc);
+    TxExecution execution =
+        blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc);
+
+    execution.printGasAccounting();
     Assertions.assertThatThrownBy(
             () -> blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc))
         .isInstanceOf(ActionFailureException.class)
