@@ -32,7 +32,7 @@
   <parent>
     <groupId>com.partisiablockchain</groupId>
     <artifactId>pom</artifactId>
-    <version>4.46.0</version>
+    <version>4.56.0</version>
   </parent>
 
   <properties>
@@ -54,73 +54,73 @@
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>abi-client</artifactId>
-      <version>4.80.0</version>
+      <version>4.108.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>abi-codegen</artifactId>
-      <version>4.80.0</version>
+      <version>4.108.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>sys-binder</artifactId>
-      <version>4.44.0</version>
+      <version>4.57.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>fee</artifactId>
-      <version>4.60.0</version>
+      <version>4.82.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>pubdeploy</artifactId>
-      <version>4.96.0</version>
+      <version>4.129.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>routing</artifactId>
-      <version>4.55.0</version>
+      <version>4.75.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>pub-wasm-binder</artifactId>
-      <version>4.62.0</version>
+      <version>4.77.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>real-wasm-binder</artifactId>
-      <version>4.71.0</version>
+      <version>4.88.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.real</groupId>
       <artifactId>deploy</artifactId>
-      <version>4.93.0</version>
+      <version>4.125.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>junit-contract-test</artifactId>
-      <version>4.207.0</version>
+      <version>4.248.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.consensus.fasttrack</groupId>
       <artifactId>plugin</artifactId>
-      <version>4.55.0</version>
+      <version>4.75.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>shared-object-store</artifactId>
-      <version>4.18.0</version>
+      <version>4.36.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -153,7 +153,7 @@
       <plugin>
         <groupId>com.partisiablockchain.language</groupId>
         <artifactId>abi-generation-maven-plugin</artifactId>
-        <version>4.80.0</version>
+        <version>4.108.0</version>
         <executions>
           <execution>
             <phase>generate-test-sources</phase>
