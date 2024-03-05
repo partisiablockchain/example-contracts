@@ -79,7 +79,7 @@ fn initialize(context: ContractContext, zk_state: ZkState<SecretVarMetadata>) ->
 }
 
 /// Registers a bidder with an address and updates the state accordingly.
-////
+///
 /// Ensures that only the owner of the contract is able to register bidders.
 #[action(shortname = 0x30, zk = true)]
 fn register_bidder(

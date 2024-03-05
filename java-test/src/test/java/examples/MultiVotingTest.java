@@ -37,7 +37,8 @@ public final class MultiVotingTest extends JunitContractTest {
   public void setup() {
     multiVotingOwner = blockchain.newAccount(1);
     byte[] multiVotingInitRpc =
-        MultiVotingContract.initialize(VOTING_CONTRACT_BYTES.code(), VOTING_CONTRACT_BYTES.abi());
+        MultiVotingContract.initialize(
+            VOTING_CONTRACT_BYTES.code(), VOTING_CONTRACT_BYTES.abi(), 1);
     multiVoting =
         blockchain.deployContract(
             multiVotingOwner, MULTI_VOTING_CONTRACT_BYTES, multiVotingInitRpc);
@@ -116,7 +117,7 @@ public final class MultiVotingTest extends JunitContractTest {
   @ContractTest(previous = "setup")
   public void deployVotingContractIncorrectWasm() {
     byte[] multiVotingInitRpc =
-        MultiVotingContract.initialize(new byte[] {}, VOTING_CONTRACT_BYTES.abi());
+        MultiVotingContract.initialize(new byte[] {}, VOTING_CONTRACT_BYTES.abi(), 1);
     BlockchainAddress multiVotingContract =
         blockchain.deployContract(
             multiVotingOwner, MULTI_VOTING_CONTRACT_BYTES, multiVotingInitRpc);
@@ -126,6 +127,23 @@ public final class MultiVotingTest extends JunitContractTest {
                 blockchain.sendAction(multiVotingOwner, multiVotingContract, addVotingContractRpc))
         .isInstanceOf(ActionFailureException.class)
         .hasMessageContaining("Unable to instantiate handler");
+  }
+
+  /** The multi-voting contract cannot deploy a voting contract with a non-existent binder id. */
+  @ContractTest(previous = "setup")
+  public void deployVotingContractIncorrectBinderId() {
+    byte[] multiVotingInitRpc =
+        MultiVotingContract.initialize(
+            VOTING_CONTRACT_BYTES.code(), VOTING_CONTRACT_BYTES.abi(), 42);
+    BlockchainAddress multiVotingContract =
+        blockchain.deployContract(
+            multiVotingOwner, MULTI_VOTING_CONTRACT_BYTES, multiVotingInitRpc);
+    byte[] addVotingContractRpc = MultiVotingContract.addVotingContract(11, 1000);
+    Assertions.assertThatThrownBy(
+            () ->
+                blockchain.sendAction(multiVotingOwner, multiVotingContract, addVotingContractRpc))
+        .isInstanceOf(ActionFailureException.class)
+        .hasMessageContaining("PublicDeployContractState.getBinderInfo(int)\" is null");
   }
 
   // Feature: Add Voter

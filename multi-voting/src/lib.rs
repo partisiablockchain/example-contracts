@@ -28,6 +28,7 @@ const PUB_DEPLOY_ADDRESS: Address = Address {
 /// * `voting_contracts`: [`SortedVecMap<u64, Option<Address>>`], A map from proposal ids to voting contracts.
 /// * `voting_contract_wasm`: [`Vec<u8>`], bytes of the voting contract wasm.
 /// * `voting_contract_abi`: [`Vec<u8>`], bytes of the voting contract abi.
+/// * `binder_id`: [`i32`], id of the binder used to deploy the voting contract.
 #[state]
 pub struct MultiVotingState {
     owner: Address,
@@ -35,6 +36,7 @@ pub struct MultiVotingState {
     voting_contracts: SortedVecMap<u64, Option<Address>>,
     voting_contract_wasm: Vec<u8>,
     voting_contract_abi: Vec<u8>,
+    binder_id: i32,
 }
 
 /// Initial function to create the initial state.
@@ -44,6 +46,7 @@ pub struct MultiVotingState {
 /// * `ctx`: [`ContractContext`], initial context.
 /// * `voting_contract_wasm`: [`Vec<u8>`], wasm bytes of a voting contract.
 /// * `voting_contract_abi`: [`Vec<u8>`], abi bytes of a voting contract.
+/// * `binder_id`: [`i32`], id of the binder used to deploy the voting contract.
 ///
 /// ### Returns:
 /// The initial state of type [`MultiVotingState`].
@@ -52,6 +55,7 @@ pub fn initialize(
     ctx: ContractContext,
     voting_contract_wasm: Vec<u8>,
     voting_contract_abi: Vec<u8>,
+    binder_id: i32,
 ) -> (MultiVotingState, Vec<EventGroup>) {
     let eligible_voters = vec![ctx.sender];
     let state = MultiVotingState {
@@ -60,6 +64,7 @@ pub fn initialize(
         voting_contracts: SortedVecMap::new(),
         voting_contract_wasm,
         voting_contract_abi,
+        binder_id,
     };
 
     (state, vec![])
@@ -155,7 +160,7 @@ pub fn add_voting_contract(
     let mut event_group = EventGroup::builder();
 
     event_group
-        .call(PUB_DEPLOY_ADDRESS, Shortname::from_u32(1))
+        .call(PUB_DEPLOY_ADDRESS, Shortname::from_u32(4))
         .argument(state.voting_contract_wasm.clone())
         .argument(state.voting_contract_abi.clone())
         .argument(create_voting_init_bytes(
@@ -163,6 +168,7 @@ pub fn add_voting_contract(
             &state.eligible_voters,
             deadline,
         ))
+        .argument(state.binder_id)
         .done();
 
     event_group
