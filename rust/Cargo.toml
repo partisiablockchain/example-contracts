@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "voting",
+    "multi-voting",
+    "petition",
+    "ping",
+    "mia-game",
+    "nickname",
+    "access-control",
+    "zk-second-price-auction",
+    "zk-struct-open",
+    "zk-immediate-open",
+    "zk-voting-simple",
+    "zk-average-salary",
+    "zk-statistics",
+    "zk-multi-functional",
+    "zk-file-share"
+]
+
+[workspace.package]
+version = "1.351.0"
+description = "Example contract for the Partisia Blockchain."
+homepage = "https://gitlab.com/partisiablockchain/language/example-contracts"
+repository = "https://gitlab.com/partisiablockchain/language/example-contracts"
+documentation = "https://gitlab.com/partisiablockchain/language/example-contracts"
+edition = "2021"
+license = "MIT"
+
+[workspace.metadata.partisiablockchain]
+cargo-partisia = "4.128.0"
+
+[workspace.metadata.zkcompiler]
+url = "https://gitlab.com/api/v4/groups/12499775/-/packages/maven/com/partisiablockchain/language/zkcompiler/4.131.0/zkcompiler-4.131.0-jar-with-dependencies.jar"
+
+[workspace.metadata.abi-cli]
+url = "https://gitlab.com/api/v4/groups/12499775/-/packages/maven/com/partisiablockchain/language/abi-cli/4.149.0/abi-cli-4.149.0-jar-with-dependencies.jar"
+
+[workspace.dependencies]
+pbc_contract_common = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+pbc_contract_codegen = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+pbc_traits = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+pbc_lib = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+read_write_rpc_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+read_write_state_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+create_type_spec_derive = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
+pbc_zk = { git = "https://git@gitlab.com/partisiablockchain/language/contract-sdk.git", tag = "v.16.56.0" }
