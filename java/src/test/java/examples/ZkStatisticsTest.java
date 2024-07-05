@@ -45,7 +45,7 @@ public final class ZkStatisticsTest extends JunitContractTest {
     Assertions.assertThat(state.deadline()).isEqualTo(blockProductionTime + inputTime);
   }
 
-  /** Add 3 legal inputs and compute the statistics for those inputs. */
+  /** The owner can compute the statistics of multiple inputs. */
   @ContractTest(previous = "setup")
   void addThreeInputsAndCompute() {
 
@@ -56,14 +56,14 @@ public final class ZkStatisticsTest extends JunitContractTest {
     SurveyAnswer otherAnswer = new SurveyAnswer(AgeGroup.SIXTY_PLUS, Gender.Other, Color.GREEN);
 
     blockchain.sendSecretInput(
-        statistics, maleSurveyParticipant, createSecretFromAnswer(maleAnswer), new byte[] {0x40});
+        statistics, maleSurveyParticipant, createSecretFromAnswer(maleAnswer), secretInputRpc());
     blockchain.sendSecretInput(
         statistics,
         femaleSurveyParticipant,
         createSecretFromAnswer(femaleAnswer),
-        new byte[] {0x40});
+        secretInputRpc());
     blockchain.sendSecretInput(
-        statistics, otherSurveyParticipant, createSecretFromAnswer(otherAnswer), new byte[] {0x40});
+        statistics, otherSurveyParticipant, createSecretFromAnswer(otherAnswer), secretInputRpc());
 
     blockchain.waitForBlockProductionTime(20005);
 
@@ -82,7 +82,7 @@ public final class ZkStatisticsTest extends JunitContractTest {
     Assertions.assertThat(state.result()).isEqualTo(expectedOutput);
   }
 
-  /** Inputs cannot be added after the deadline. */
+  /** A user cannot add an input after the deadline. */
   @ContractTest(previous = "setup")
   void inputAfterDeadline() {
     blockchain.waitForBlockProductionTime(20005);
@@ -96,13 +96,13 @@ public final class ZkStatisticsTest extends JunitContractTest {
                     statistics,
                     maleSurveyParticipant,
                     createSecretFromAnswer(maleAnswer),
-                    new byte[] {0x40}))
+                    secretInputRpc()))
         .hasMessageContaining(
             "Inputting data is not allowed after the deadline. Current time is 20006, deadline was"
                 + " 20005");
   }
 
-  /** The statistics cannot be computed before the deadline. */
+  /** The admin cannot compute the statistics before the deadline. */
   @ContractTest(previous = "setup")
   void startingTheComputationBeforeDeadline() {
 
@@ -164,4 +164,8 @@ public final class ZkStatisticsTest extends JunitContractTest {
   }
 
   private record SurveyAnswer(AgeGroup ageGroup, Gender gender, Color color) {}
+
+  byte[] secretInputRpc() {
+    return new byte[] {0x40};
+  }
 }

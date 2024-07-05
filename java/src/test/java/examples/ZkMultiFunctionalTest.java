@@ -40,12 +40,14 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
     Assertions.assertThat(state.latestProducedValue()).isNull();
   }
 
-  /** Contract state is updated to identity function of input variables. */
+  /**
+   * A user can send a secret input, which the contract state holds as its latest produced value.
+   */
   @ContractTest(previous = "deploy")
   void identityFromInput() {
     final int secretValue = 42;
     blockchain.sendSecretInput(
-        contractAddress, contractOwnerAccount, createSecretInput(secretValue), new byte[] {0x40});
+        contractAddress, contractOwnerAccount, createSecretInput(secretValue), secretInputRpc());
 
     ZkMultiFunctional.ContractState state = getState();
 
@@ -53,7 +55,7 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
     Assertions.assertThat(state.latestProducedValue()).isEqualTo(secretValue);
   }
 
-  /** Contract state is set to "4", when compute_4 is called. */
+  /** A user can set the latest produced value to "4" by calling compute_4. */
   @ContractTest(previous = "deploy")
   void produce_4() {
     byte[] compute4Rpc = ZkMultiFunctional.produce4();
@@ -65,11 +67,13 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
     Assertions.assertThat(state.latestProducedValue()).isEqualTo(4);
   }
 
-  /** State is correctly overwritten on multiple different computations. */
+  /**
+   * A user can overwrite the latest produced value in the state by sending multiple computations.
+   */
   @ContractTest(previous = "deploy")
   void computeMultiple() {
     blockchain.sendSecretInput(
-        contractAddress, contractOwnerAccount, createSecretInput(1337), new byte[] {0x40});
+        contractAddress, contractOwnerAccount, createSecretInput(1337), secretInputRpc());
 
     ZkMultiFunctional.ContractState state = getState();
 
@@ -84,17 +88,21 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
 
     // After multiple computations, the contract state holds the latest one.
     blockchain.sendSecretInput(
-        contractAddress, contractOwnerAccount, createSecretInput(1337), new byte[] {0x40});
+        contractAddress, contractOwnerAccount, createSecretInput(1337), secretInputRpc());
     blockchain.sendSecretInput(
-        contractAddress, contractOwnerAccount, createSecretInput(1338), new byte[] {0x40});
+        contractAddress, contractOwnerAccount, createSecretInput(1338), secretInputRpc());
     blockchain.sendSecretInput(
-        contractAddress, contractOwnerAccount, createSecretInput(1339), new byte[] {0x40});
+        contractAddress, contractOwnerAccount, createSecretInput(1339), secretInputRpc());
     state = getState();
     Assertions.assertThat(state.latestProducedValue()).isEqualTo(1339);
   }
 
   private CompactBitArray createSecretInput(Integer secret) {
     return BitOutput.serializeBits(output -> output.writeSignedInt(secret, 32));
+  }
+
+  byte[] secretInputRpc() {
+    return new byte[] {0x40};
   }
 
   private ZkMultiFunctional.ContractState getState() {
