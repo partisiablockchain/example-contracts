@@ -1,16 +1,16 @@
 include:
 - project: 'secata-public/pom/shared-ci'
   file: 'contract-java-test.yml'
-  ref: 'v.2.67.0'
+  ref: 'v.2.72.0'
 - project: 'secata-public/pom/shared-ci'
   file: 'rust-contract.yml'
-  ref: 'v.2.67.0'
+  ref: 'v.2.72.0'
 - project: 'secata-public/pom/shared-ci'
   file: 'jar-codequality.yml'
-  ref: 'v.2.67.0'
+  ref: 'v.2.72.0'
 - project: 'secata-public/pom/shared-ci'
   file: 'polyglot.yml'
-  ref: 'v.2.67.0'
+  ref: 'v.2.72.0'
 
 
 before-java:
