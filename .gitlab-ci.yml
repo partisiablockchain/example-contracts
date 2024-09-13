@@ -1,4 +1,4 @@
 include:
 - project: 'secata-public/pom/shared-ci'
   file: 'rust-contract.yml'
-  ref: 'v.2.81.0'
+  ref: 'v.2.81.1'
