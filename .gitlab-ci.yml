@@ -1,26 +1,4 @@
 include:
 - project: 'secata-public/pom/shared-ci'
-  file: 'contract-java-test.yml'
-  ref: 'v.2.72.0'
-- project: 'secata-public/pom/shared-ci'
   file: 'rust-contract.yml'
-  ref: 'v.2.72.0'
-- project: 'secata-public/pom/shared-ci'
-  file: 'jar-codequality.yml'
-  ref: 'v.2.72.0'
-- project: 'secata-public/pom/shared-ci'
-  file: 'polyglot.yml'
-  ref: 'v.2.72.0'
-
-
-before-java:
-  extends: .cargo
-  image: registry.gitlab.com/partisia/dockerimages/rustmaven:${RUST_VERSION}
-  script:
-    - !reference [ .functions, cargo-partisia-contract ]
-    - !reference [.scripts, rust-build]
-  artifacts:
-    paths:
-      - "$CARGO_WORK_DIR/target/wasm32-unknown-unknown/release/*.abi"
-      - "$CARGO_WORK_DIR/target/wasm32-unknown-unknown/release/*.wasm"
-      - "$CARGO_WORK_DIR/target/wasm32-unknown-unknown/release/*.zkwa"
+  ref: 'v.2.81.0'

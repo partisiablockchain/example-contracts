@@ -16,7 +16,8 @@ public final class ZkStatisticsTest extends JunitContractTest {
   static final ContractBytes STATISTIC_CONTRACT =
       ContractBytes.fromPaths(
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics.abi"));
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics.abi"),
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics_runner"));
 
   BlockchainAddress statistics;
   BlockchainAddress owner;

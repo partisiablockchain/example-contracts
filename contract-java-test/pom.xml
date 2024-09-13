@@ -32,12 +32,10 @@
   <parent>
     <groupId>com.partisiablockchain</groupId>
     <artifactId>pom</artifactId>
-    <version>4.80.0</version>
+    <version>4.89.0</version>
   </parent>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
     <governance.SYS_BINDER>com.partisiablockchain.governance:sys-binder</governance.SYS_BINDER>
     <governance.REAL_BINDER>com.partisiablockchain.language:real-wasm-binder</governance.REAL_BINDER>
     <governance.REAL_DEPLOY>com.partisiablockchain.real:deploy</governance.REAL_DEPLOY>
@@ -47,80 +45,73 @@
     <governance.CONSENSUS>com.partisiablockchain.consensus.fasttrack:plugin</governance.CONSENSUS>
     <governance.ACCOUNT_PLUGIN>com.partisiablockchain.governance:fee</governance.ACCOUNT_PLUGIN>
     <governance.SHARED_OBJECT_STORE>com.partisiablockchain.governance:shared-object-store</governance.SHARED_OBJECT_STORE>
-    <integrationtest.version>4.22.0</integrationtest.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
-      <artifactId>abi-client</artifactId>
-      <version>4.189.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.partisiablockchain.language</groupId>
-      <artifactId>abi-codegen</artifactId>
-      <version>4.189.0</version>
+      <artifactId>codegen-lib</artifactId>
+      <version>5.29.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>sys-binder</artifactId>
-      <version>4.87.0</version>
+      <version>5.7.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>fee</artifactId>
-      <version>4.126.0</version>
+      <version>5.13.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>pubdeploy</artifactId>
-      <version>4.222.0</version>
+      <version>5.33.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>routing</artifactId>
-      <version>4.118.0</version>
+      <version>5.10.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>pub-wasm-binder</artifactId>
-      <version>4.109.0</version>
+      <version>5.9.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>real-wasm-binder</artifactId>
-      <version>4.125.0</version>
+      <version>5.13.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.real</groupId>
       <artifactId>deploy</artifactId>
-      <version>4.219.0</version>
+      <version>5.35.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.language</groupId>
       <artifactId>junit-contract-test</artifactId>
-      <version>4.376.0</version>
+      <version>5.64.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.consensus.fasttrack</groupId>
       <artifactId>plugin</artifactId>
-      <version>4.118.0</version>
+      <version>5.11.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.partisiablockchain.governance</groupId>
       <artifactId>shared-object-store</artifactId>
-      <version>4.79.0</version>
+      <version>5.11.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -153,7 +144,7 @@
       <plugin>
         <groupId>com.partisiablockchain.language</groupId>
         <artifactId>abi-generation-maven-plugin</artifactId>
-        <version>4.189.0</version>
+        <version>5.29.0</version>
         <executions>
           <execution>
             <phase>generate-test-sources</phase>

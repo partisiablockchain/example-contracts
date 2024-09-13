@@ -24,7 +24,7 @@ public final class ZkFileShareTest extends JunitContractTest {
       ContractBytes.fromPaths(
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.zkwa"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share_contract_runner"));
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share_runner"));
 
   private BlockchainAddress contractOwner;
   private BlockchainAddress initialUser;

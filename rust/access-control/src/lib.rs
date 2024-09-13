@@ -4,7 +4,7 @@
 extern crate pbc_contract_codegen;
 
 use crate::SecurityLevelImpl::{Admin, ModeratorA, ModeratorB, User};
-use create_type_spec_derive::{create_type_spec_for_generic, CreateTypeSpec};
+use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::sorted_vec_map::SortedVecMap;
@@ -165,11 +165,6 @@ impl<SecurityLevelT: SecurityLevel + Debug, E> ProtectedData<SecurityLevelT, E> 
         self.level = new_level;
     }
 }
-
-// Macro to help generate the abi for generics
-create_type_spec_for_generic! { ProtectedData<SecurityLevelImpl, String> }
-create_type_spec_for_generic! { ProtectedData<SecurityLevelImpl, Option<Address>> }
-create_type_spec_for_generic! { AccessControlMap<SecurityLevelImpl> }
 
 /// Initialize a new Generics contract.
 ///

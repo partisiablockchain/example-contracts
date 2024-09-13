@@ -206,7 +206,7 @@ public final class PingTest extends JunitContractTest {
 
   private long getUserGasBalance(BlockchainAddress accountAddress) {
     FuzzyState contractJson = blockchain.getAccountPluginAccountJson(accountAddress);
-    // Governance -> Account.java
+    // Governance -> Account.contract-java-test
     Unsigned256 value =
         Unsigned256.create(contractJson.getNode("/accountCoins/0/balance").textValue());
     return convertBalanceToGas(value.longValueExact());
@@ -214,14 +214,14 @@ public final class PingTest extends JunitContractTest {
 
   private long getContractGasBalance(BlockchainAddress contractAddress) {
     FuzzyState contractJson = blockchain.getAccountPluginContractJson(contractAddress);
-    // Governance -> ContractStorage.java
+    // Governance -> ContractStorage.contract-java-test
     Unsigned256 value = Unsigned256.create(contractJson.getNode("/balance/value").textValue());
     return convertBalanceToGas(value.longValueExact());
   }
 
   private long convertBalanceToGas(long balance) {
     FuzzyState globalJson = blockchain.getAccountPluginGlobalJson();
-    // Governance -> AccountStateGlobal.java
+    // Governance -> AccountStateGlobal.contract-java-test
     long num = globalJson.getNode("/coins/coins/0/conversionRate/numerator").asLong();
     long denom = globalJson.getNode("/coins/coins/0/conversionRate/numerator").asLong();
     return balance * num / denom;

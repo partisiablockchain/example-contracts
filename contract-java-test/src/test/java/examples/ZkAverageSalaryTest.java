@@ -21,7 +21,7 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
       ContractBytes.fromPaths(
           Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.zkwa"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary_contract_runner"));
+          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary_runner"));
 
   private BlockchainAddress account1;
   private BlockchainAddress account2;

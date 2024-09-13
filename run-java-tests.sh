@@ -19,7 +19,7 @@ run_java_tests() {
 }
 
 merge_and_report() {
-  pushd java 1> /dev/null || exit
+  pushd contract-java-test 1> /dev/null || exit
 
   # Determine profraw files
   find ./target/coverage/profraw/ -type f -name '*.profraw' > ./target/coverage/all-profraw-files
@@ -38,7 +38,7 @@ merge_and_report() {
 
 test_with_coverage() {
   # Run contract tests
-  pushd java 1> /dev/null || exit
+  pushd contract-java-test 1> /dev/null || exit
   mvn test -Dcoverage
   popd 1> /dev/null || exit
 
@@ -47,7 +47,7 @@ test_with_coverage() {
 
 test_without_coverage() {
   # Run contract tests
-  pushd java 1> /dev/null || exit
+  pushd contract-java-test 1> /dev/null || exit
   mvn test
   popd 1> /dev/null || exit
 }

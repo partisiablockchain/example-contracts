@@ -18,8 +18,7 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
       ContractBytes.fromPaths(
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional.zkwa"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional.abi"),
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/zk_multi_functional_contract_runner"));
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional_runner"));
 
   private BlockchainAddress contractOwnerAccount;
 
@@ -57,7 +56,7 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
 
   /** A user can set the latest produced value to "4" by calling compute_4. */
   @ContractTest(previous = "deploy")
-  void produce_4() {
+  void produce4() {
     byte[] compute4Rpc = ZkMultiFunctional.produce4();
     blockchain.sendAction(contractOwnerAccount, contractAddress, compute4Rpc);
 

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.partisiablockchain.BlockchainAddress;
-import com.partisiablockchain.language.abiclient.state.StateBytes;
 import com.partisiablockchain.language.abicodegen.Nickname;
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
@@ -21,25 +20,26 @@ public final class NicknameTest extends JunitContractTest {
           Path.of("../rust/target/wasm32-unknown-unknown/release/nickname.abi"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/nickname_runner"));
   private BlockchainAddress account;
-  private BlockchainAddress nicknameContract;
+  private BlockchainAddress nicknameAddress;
+  private Nickname nicknameContract;
 
   /** Setup for all the other tests. Deploys the contract and gives a nickname. */
   @ContractTest
   void setup() {
     account = blockchain.newAccount(2);
     byte[] initRpc = Nickname.initialize();
-    nicknameContract = blockchain.deployContract(account, CONTRACT_BYTES, initRpc);
+    nicknameAddress = blockchain.deployContract(account, CONTRACT_BYTES, initRpc);
+    nicknameContract = new Nickname(getStateClient(), nicknameAddress);
 
     BlockchainAddress key =
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
     String nick = "My nickname";
 
     byte[] rpc = Nickname.giveNickname(key, nick);
-    blockchain.sendAction(account, nicknameContract, rpc);
+    blockchain.sendAction(account, nicknameAddress, rpc);
 
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(1);
+    Nickname.ContractState state = nicknameContract.getState();
+    assertThat(state.map().treeId()).isEqualTo(0);
     assertThat(state.map().get(key)).isEqualTo(nick);
   }
 
@@ -50,10 +50,9 @@ public final class NicknameTest extends JunitContractTest {
         BlockchainAddress.fromString("000000000000000000000000000000000000000002");
     String nick = "abc";
     byte[] rpc = Nickname.giveNickname(key, nick);
-    blockchain.sendAction(account, nicknameContract, rpc);
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(2);
+    blockchain.sendAction(account, nicknameAddress, rpc);
+
+    Nickname.ContractState state = nicknameContract.getState();
     assertThat(state.map().get(key)).isEqualTo(nick);
   }
 
@@ -64,10 +63,9 @@ public final class NicknameTest extends JunitContractTest {
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
     String nick = "new nickname";
     byte[] rpc = Nickname.giveNickname(key, nick);
-    blockchain.sendAction(account, nicknameContract, rpc);
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(1);
+    blockchain.sendAction(account, nicknameAddress, rpc);
+
+    Nickname.ContractState state = nicknameContract.getState();
     assertThat(state.map().get(key)).isEqualTo(nick);
   }
 
@@ -77,10 +75,10 @@ public final class NicknameTest extends JunitContractTest {
     BlockchainAddress key =
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
     byte[] rpc = Nickname.removeNickname(key);
-    blockchain.sendAction(account, nicknameContract, rpc);
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(0);
+    blockchain.sendAction(account, nicknameAddress, rpc);
+
+    Nickname.ContractState state = nicknameContract.getState();
+    assertThat(state.map().getNextN(null, 10).size()).isEqualTo(0);
   }
 
   /** Removing nonexistent nickname has no effect. */
@@ -89,10 +87,9 @@ public final class NicknameTest extends JunitContractTest {
     BlockchainAddress key =
         BlockchainAddress.fromString("000000000000000000000000000000000000000042");
     byte[] rpc = Nickname.removeNickname(key);
-    blockchain.sendAction(account, nicknameContract, rpc);
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(1);
+    blockchain.sendAction(account, nicknameAddress, rpc);
+
+    Nickname.ContractState state = nicknameContract.getState();
     assertThat(
             state
                 .map()
@@ -107,12 +104,12 @@ public final class NicknameTest extends JunitContractTest {
         BlockchainAddress.fromString("000000000000000000000000000000000000000002");
     String nick = "abc";
     byte[] rpc = Nickname.giveNickname(key, nick);
-    assertThatThrownBy(() -> blockchain.sendAction(account, nicknameContract, rpc, 900))
+    assertThatThrownBy(() -> blockchain.sendAction(account, nicknameAddress, rpc, 900))
         .isInstanceOf(ActionFailureException.class)
         .hasMessageContaining("Ran out of gas");
-    StateBytes wasmState = blockchain.getContractState(nicknameContract);
-    Nickname.ContractState state = Nickname.ContractState.deserialize(wasmState);
-    assertThat(state.map().size()).isEqualTo(1);
+
+    Nickname.ContractState state = nicknameContract.getState();
+    assertThat(state.map().getNextN(null, 10).size()).isEqualTo(1);
   }
 
   /** Can handle many nicknames. */
@@ -121,11 +118,9 @@ public final class NicknameTest extends JunitContractTest {
     for (int i = 0; i < 1000; i++) {
       String hex = HexFormat.of().toHexDigits(i);
       BlockchainAddress key = BlockchainAddress.fromString("00".repeat(17) + hex);
-      blockchain.sendAction(account, nicknameContract, Nickname.giveNickname(key, hex));
+      blockchain.sendAction(account, nicknameAddress, Nickname.giveNickname(key, hex));
     }
-    Nickname.ContractState state =
-        Nickname.ContractState.deserialize(blockchain.getContractState(nicknameContract));
-    assertThat(state.map().size()).isEqualTo(1000);
+    Nickname.ContractState state = nicknameContract.getState();
     for (int i = 0; i < 1000; i++) {
       String hex = HexFormat.of().toHexDigits(i);
       BlockchainAddress key = BlockchainAddress.fromString("00".repeat(17) + hex);

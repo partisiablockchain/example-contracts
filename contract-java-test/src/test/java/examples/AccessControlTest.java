@@ -105,7 +105,7 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "setup")
   void updateDescriptionLevel() {
     byte[] payload =
-        AccessControl.updateDescriptionLevel(new AccessControl.SecurityLevelImpl.User());
+        AccessControl.updateDescriptionLevel(new AccessControl.SecurityLevelImplUser());
     blockchain.sendAction(account1, accessControlContract, payload);
 
     AccessControl.ContractState state =
@@ -125,7 +125,7 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "setup")
   void updateBorrowLevel() {
     byte[] payload =
-        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImplModeratorA());
     blockchain.sendAction(account1, accessControlContract, payload);
 
     AccessControl.ContractState state =
@@ -144,11 +144,11 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "updateBorrowLevel")
   void updateUserLevels() {
     byte[] payload =
-        AccessControl.updateUserLevel(account2, new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateUserLevel(account2, new AccessControl.SecurityLevelImplModeratorA());
     blockchain.sendAction(account1, accessControlContract, payload);
 
     payload =
-        AccessControl.updateUserLevel(account3, new AccessControl.SecurityLevelImpl.ModeratorB());
+        AccessControl.updateUserLevel(account3, new AccessControl.SecurityLevelImplModeratorB());
     blockchain.sendAction(account1, accessControlContract, payload);
 
     AccessControl.ContractState state =
@@ -191,7 +191,7 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "updateUserLevels")
   void moderatorUpdateUserLevel() {
     byte[] payload =
-        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImplModeratorA());
     blockchain.sendAction(account2, accessControlContract, payload);
 
     AccessControl.ContractState state =
@@ -204,12 +204,12 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "updateUserLevels")
   void cannotUpdateHigherUsers() {
     byte[] payload =
-        AccessControl.updateUserLevel(account1, new AccessControl.SecurityLevelImpl.User());
+        AccessControl.updateUserLevel(account1, new AccessControl.SecurityLevelImplUser());
     assertThatThrownBy(() -> blockchain.sendAction(account2, accessControlContract, payload))
         .hasMessageContaining("Sender level 'ModeratorA' cannot update user with level 'Admin'");
 
     byte[] payload2 =
-        AccessControl.updateUserLevel(account3, new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateUserLevel(account3, new AccessControl.SecurityLevelImplModeratorA());
     assertThatThrownBy(() -> blockchain.sendAction(account2, accessControlContract, payload2))
         .hasMessageContaining(
             "Sender level 'ModeratorA' cannot update user with level 'ModeratorB'");
@@ -219,13 +219,13 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "updateUserLevels")
   void cannotUpdateToHigherLevel() {
     byte[] payload =
-        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImpl.ModeratorB());
+        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImplModeratorB());
     assertThatThrownBy(() -> blockchain.sendAction(account2, accessControlContract, payload))
         .hasMessageContaining(
             "Sender level 'ModeratorA' cannot update user to new level 'ModeratorB'");
 
     byte[] payload2 =
-        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImpl.Admin());
+        AccessControl.updateUserLevel(account4, new AccessControl.SecurityLevelImplAdmin());
     assertThatThrownBy(() -> blockchain.sendAction(account2, accessControlContract, payload2))
         .hasMessageContaining("Sender level 'ModeratorA' cannot update user to new level 'Admin'");
   }
@@ -234,17 +234,17 @@ public final class AccessControlTest extends JunitContractTest {
   @ContractTest(previous = "updateUserLevels")
   void nonAdminUpdateLevel() {
     byte[] payload =
-        AccessControl.updateDescriptionLevel(new AccessControl.SecurityLevelImpl.User());
+        AccessControl.updateDescriptionLevel(new AccessControl.SecurityLevelImplUser());
     assertThatThrownBy(() -> blockchain.sendAction(account2, accessControlContract, payload))
         .hasMessageContaining("Only 'Admin' can update level");
 
     byte[] payload2 =
-        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImplModeratorA());
     assertThatThrownBy(() -> blockchain.sendAction(account3, accessControlContract, payload2))
         .hasMessageContaining("Only 'Admin' can update level");
 
     byte[] payload3 =
-        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImpl.ModeratorA());
+        AccessControl.updateBorrowLevel(new AccessControl.SecurityLevelImplModeratorA());
     assertThatThrownBy(() -> blockchain.sendAction(account4, accessControlContract, payload3))
         .hasMessageContaining("Only 'Admin' can update level");
   }
