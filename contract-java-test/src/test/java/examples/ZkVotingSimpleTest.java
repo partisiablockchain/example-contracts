@@ -20,8 +20,7 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
       ContractBytes.fromPaths(
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.zkwa"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.abi"),
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/zk_voting_simple_contract_runner"));
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple_runner"));
 
   private BlockchainAddress account1;
   private BlockchainAddress account2;
