@@ -14,15 +14,14 @@ import org.assertj.core.api.Assertions;
 /** This class contains a test suite for the multi-voting smart contract. */
 public final class MultiVotingTest extends JunitContractTest {
   private static final ContractBytes MULTI_VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract_runner"));
 
   private static final ContractBytes VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.abi"));
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.pbc"),
+          Path.of("../rust/target/wasm32-unknown-unknown/release/voting_runner"));
 
   private BlockchainAddress multiVotingOwner;
   private BlockchainAddress multiVoting;

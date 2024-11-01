@@ -15,9 +15,8 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
 
   /** {@link ZkMultiFunctional} contract bytes. */
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_multi_functional_runner"));
 
   private BlockchainAddress contractOwnerAccount;

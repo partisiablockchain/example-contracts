@@ -21,9 +21,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 public final class ZkFileShareTest extends JunitContractTest {
 
   private static final ContractBytes FILE_SHARE_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share_runner"));
 
   private BlockchainAddress contractOwner;

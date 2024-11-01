@@ -15,9 +15,8 @@ import java.util.HexFormat;
 /** Test suite for the Nickname contract. */
 public final class NicknameTest extends JunitContractTest {
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/nickname.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/nickname.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/nickname.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/nickname_runner"));
   private BlockchainAddress account;
   private BlockchainAddress nicknameAddress;

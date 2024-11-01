@@ -1,0 +1,58 @@
+{
+  "internals": [
+    {
+      "feature": 8,
+      "threshold": 0.5
+    },
+    {
+      "feature": 2,
+      "threshold": 7669.5
+    },
+    {
+      "feature": 1,
+      "threshold": 12.5
+    },
+    {
+      "feature": 0,
+      "threshold": 20.0
+    },
+    {
+      "feature": 1,
+      "threshold": 12.5
+    },
+    {
+      "feature": 2,
+      "threshold": 5095.5
+    },
+    {
+      "feature": 2,
+      "threshold": 5095.5
+    }
+  ],
+  "leaves": [
+    {
+      "classification": 0
+    },
+    {
+      "classification": 0
+    },
+    {
+      "classification": 0
+    },
+    {
+      "classification": 1
+    },
+    {
+      "classification": 0
+    },
+    {
+      "classification": 1
+    },
+    {
+      "classification": 1
+    },
+    {
+      "classification": 1
+    }
+  ]
+}

@@ -18,9 +18,8 @@ import java.nio.file.Path;
 public final class ZkAverageSalaryTest extends JunitContractTest {
 
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary_runner"));
 
   private BlockchainAddress account1;

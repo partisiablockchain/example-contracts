@@ -14,9 +14,8 @@ import org.assertj.core.api.Assertions;
 public final class VotingTest extends JunitContractTest {
 
   private static final ContractBytes VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/voting_runner"));
   private BlockchainAddress voter1;
   private BlockchainAddress voter2;
