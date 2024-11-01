@@ -17,9 +17,8 @@ import org.assertj.core.api.Assertions;
 public final class ZkVotingSimpleTest extends JunitContractTest {
 
   private static final ContractBytes VOTING_SIMPLE_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple_runner"));
 
   private BlockchainAddress account1;

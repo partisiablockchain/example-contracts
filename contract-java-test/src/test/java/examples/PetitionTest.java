@@ -14,9 +14,8 @@ public final class PetitionTest extends JunitContractTest {
 
   /** {@link Petition} contract bytes. */
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/petition.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/petition.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/petition.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/petition_runner"));
 
   private BlockchainAddress petition;

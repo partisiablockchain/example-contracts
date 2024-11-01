@@ -23,9 +23,8 @@ public final class MiaGameTest extends JunitContractTest {
 
   /** {@link MiaGame} contract bytes. */
   private static final ContractBytes MIA_CONTRACT =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game.zkwa"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game_runner"));
 
   private static final DiceThrowPoints THIRTY_TWO =

@@ -18,9 +18,8 @@ public final class PingTest extends JunitContractTest {
 
   /** {@link PingContract} contract bytes. */
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract_runner"));
 
   private static final long CONTRACT_STORAGE_FEE = 1;

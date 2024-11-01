@@ -11,3 +11,5 @@ zk-struct-open/src/lib.rs
 zk-struct-open/src/zk_compute.rs
 zk-voting-simple/src/contract.rs
 zk-voting-simple/src/zk_compute.rs
+zk-classification/src/lib.rs
+zk-classification/src/zk_compute.rs

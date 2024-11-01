@@ -13,9 +13,8 @@ import java.nio.file.Path;
 /** Tests. */
 public final class AccessControlTest extends JunitContractTest {
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/access_control.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/access_control.abi"),
+      ContractBytes.fromPbcFile(
+          Path.of("../rust/target/wasm32-unknown-unknown/release/access_control.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/access_control_runner"));
   private BlockchainAddress account1;
   private BlockchainAddress account2;
