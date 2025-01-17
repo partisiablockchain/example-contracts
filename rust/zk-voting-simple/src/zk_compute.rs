@@ -1,13 +1,13 @@
 use pbc_zk::*;
 
 /// Perform a zk computation on secret-shared data to count the number
-/// of accepting votes (non-zero).
+/// of for votes (non-zero).
 ///
 /// ### Returns:
 ///
 /// The number of accepting votes.
 #[zk_compute(shortname = 0x61)]
-pub fn count_yes_votes() -> Sbi32 {
+pub fn count_for_votes() -> Sbi32 {
     // Initialize votes
     let mut votes_for: Sbi32 = Sbi32::from(0);
 

@@ -6,6 +6,7 @@ extern crate pbc_contract_common;
 
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
+use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
@@ -14,26 +15,38 @@ use read_write_state_derive::ReadWriteState;
 
 mod zk_compute;
 
-/// Secret variable metadata. Indicates if the variable is a vote or the number of counted yes votes
+/// Metadata for the contract secret variables.
 #[derive(ReadWriteState, Debug)]
 #[repr(C)]
 struct SecretVarMetadata {
+    /// The type of the secret variable. Indicates if the variable is a vote or the number of counted for votes
     variable_type: SecretVarType,
 }
 
+/// Type of a secret variable.
 #[derive(ReadWriteState, Debug, PartialEq)]
 #[repr(u8)]
 enum SecretVarType {
+    /// The secret variable is a vote.
     Vote = 1,
-    CountedYesVotes = 2,
+    /// The secret variable tracks the number of for votes
+    CountedForVotes = 2,
 }
 
+/// Tracks the result of a vote.
 #[derive(ReadWriteState, CreateTypeSpec, Clone)]
 struct VoteResult {
+    /// Number of 'for' votes.
     votes_for: u32,
+    /// Number of 'against' votes.
     votes_against: u32,
+    /// Whether the vote passed by a simple majority.
     passed: bool,
 }
+
+/// Unit type for [`ContractState::already_voted`] set of users that have voted.
+#[derive(ReadWriteState, CreateTypeSpec, Clone)]
+struct Unit {}
 
 /// This contract's state
 #[state]
@@ -48,6 +61,8 @@ struct ContractState {
     /// and a bool indicating whether the vote passed. It is initialized as None and is
     /// eventually updated to Some(VoteResult) after start_vote_counting is called
     vote_result: Option<VoteResult>,
+    /// Maintains the set of voters that have already voted.
+    already_voted: AvlTreeMap<Address, Unit>,
 }
 
 /// Initializes contract
@@ -66,15 +81,18 @@ fn initialize(
         owner: ctx.sender,
         deadline_voting_time,
         vote_result: None,
+        already_voted: AvlTreeMap::new(),
     }
 }
 
-/// Adds another vote.
+/// Casts another vote.
+///
+/// Can only be used by an address that have not already cast a vote.
 #[zk_on_secret_input(shortname = 0x40)]
 fn add_vote(
     context: ContractContext,
-    state: ContractState,
-    zk_state: ZkState<SecretVarMetadata>,
+    mut state: ContractState,
+    _zk_state: ZkState<SecretVarMetadata>,
 ) -> (
     ContractState,
     Vec<EventGroup>,
@@ -87,11 +105,7 @@ fn add_vote(
         context.block_production_time,
     );
     assert!(
-        zk_state
-            .secret_variables
-            .iter()
-            .chain(zk_state.pending_inputs.iter())
-            .all(|(_, v)| v.owner != context.sender),
+        !state.already_voted.contains_key(&context.sender),
         "Each voter is only allowed to send one vote variable. Sender: {:?}",
         context.sender
     );
@@ -101,6 +115,7 @@ fn add_vote(
             variable_type: SecretVarType::Vote,
         },
     );
+    state.already_voted.insert(context.sender, Unit {});
     (state, vec![], input_def)
 }
 
@@ -131,10 +146,10 @@ fn start_vote_counting(
     (
         state,
         vec![],
-        vec![zk_compute::count_yes_votes_start(
+        vec![zk_compute::count_for_votes_start(
             Some(SHORTNAME_COUNTING_COMPLETE),
             &SecretVarMetadata {
-                variable_type: SecretVarType::CountedYesVotes,
+                variable_type: SecretVarType::CountedForVotes,
             },
         )],
     )
