@@ -13,7 +13,7 @@ use pbc_contract_common::events::EventGroup;
 /// The contract can vote on a voting contract given the domain of the voting contract.
 /// The voting client looks up the address
 /// of that voting contract and propagates the vote to the voting contracts address.
-
+///
 /// The state of the DNS voting client.
 #[state]
 pub struct DnsVotingClientState {

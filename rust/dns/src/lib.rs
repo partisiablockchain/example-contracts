@@ -21,7 +21,7 @@ use read_write_state_derive::ReadWriteState;
 /// thus who can remove and overwrite the domain.
 /// The dns-voting-client is an example of a smart contract,
 /// that uses the DNS contract.
-
+///
 /// A DNS entry.
 #[derive(CreateTypeSpec, ReadWriteState, Ord, Eq, PartialEq, PartialOrd)]
 pub struct DnsEntry {

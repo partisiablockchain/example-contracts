@@ -9,36 +9,56 @@ mod zk_compute;
 
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
+use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::zk::{
-    AttestationId, CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange,
-};
-use pbc_traits::{ReadRPC, ReadWriteState, WriteRPC};
-use pbc_zk::Sbi32;
+use pbc_contract_common::zk::{AttestationId, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
+use pbc_traits::ReadWriteState;
+use pbc_zk::Sbu32;
 use read_write_rpc_derive::ReadRPC;
 use read_write_rpc_derive::WriteRPC;
 use read_write_state_derive::ReadWriteState;
 
-/// Id of a contract bidder.
-#[repr(transparent)]
-#[derive(PartialEq, ReadRPC, WriteRPC, ReadWriteState, Debug, Clone, Copy, CreateTypeSpec)]
-#[non_exhaustive]
-struct BidderId {
-    id: i32,
-}
-
 /// Secret variable metadata. Contains unique ID of the bidder.
 #[derive(ReadWriteState, ReadRPC, WriteRPC, Debug)]
 struct SecretVarMetadata {
-    bidder_id: BidderId,
+    is_bid: bool,
 }
 
 /// Number of bids required before starting auction computation.
 const MIN_NUM_BIDDERS: u32 = 3;
 
 /// Type of tracking bid amount
-type BidAmount = i32;
+type BidAmountPublic = u32;
+
+/// Tracks whether a user have placed their bid or not.
+#[derive(ReadWriteState, ReadRPC, WriteRPC, Debug, CreateTypeSpec)]
+struct RegisteredBidder {
+    /// External id of the bidder. Part of the attestation.
+    external_id: ExternalId,
+    /// Tracks whether a user have placed their bid or not.
+    have_already_bid: bool,
+}
+
+/// An id that is assigned in the [`register_bidder`] invocation. Part of the attestation,
+/// allowing external systems to easily use their own idenfiers.
+///
+/// Part of the attested data when an auction is won.
+#[derive(ReadWriteState, ReadRPC, WriteRPC, CreateTypeSpec, Debug)]
+struct ExternalId {
+    /// Identifier bytes
+    id_bytes: Vec<u8>,
+}
+
+/// Struct used for [`register_bidders`]. Includes both the bidder's PBC blockchain [`Address`],
+/// and any external id that the owner has decided to attach.
+///
+/// Part of the attested data when an auction is won.
+#[derive(ReadWriteState, ReadRPC, WriteRPC, CreateTypeSpec, Debug)]
+struct AddressAndExternalId {
+    address: Address,
+    external_id: ExternalId,
+}
 
 /// This state of the contract.
 #[state]
@@ -46,24 +66,19 @@ struct ContractState {
     /// Owner of the contract
     owner: Address,
     /// Registered bidders - only registered bidders are allowed to bid.
-    registered_bidders: Vec<RegisteredBidder>,
+    registered_bidders: AvlTreeMap<Address, RegisteredBidder>,
+    /// Whether the auction has already begun?
+    auction_begun: bool,
     /// The auction result
     auction_result: Option<AuctionResult>,
 }
 
-#[derive(Clone, ReadWriteState, CreateTypeSpec, ReadRPC, WriteRPC)]
+#[derive(ReadWriteState, CreateTypeSpec, ReadRPC)]
 struct AuctionResult {
-    /// Bidder id of the auction winner
-    winner: BidderId,
+    /// Address of the auction winner
+    winner: AddressAndExternalId,
     /// The winning bid
-    second_highest_bid: BidAmount,
-}
-
-/// Representation of a registered bidder with an address
-#[derive(Clone, ReadWriteState, CreateTypeSpec)]
-struct RegisteredBidder {
-    bidder_id: BidderId,
-    address: Address,
+    second_highest_bid: BidAmountPublic,
 }
 
 /// Initializes contract
@@ -73,139 +88,141 @@ struct RegisteredBidder {
 fn initialize(context: ContractContext, zk_state: ZkState<SecretVarMetadata>) -> ContractState {
     ContractState {
         owner: context.sender,
-        registered_bidders: Vec::new(),
+        registered_bidders: AvlTreeMap::new(),
+        auction_begun: false,
         auction_result: None,
     }
 }
 
-/// Registers a bidder with an address and updates the state accordingly.
+/// Registers new bidders, by specifying their [`Address`]es and their [`ExternalId`].
 ///
-/// Ensures that only the owner of the contract is able to register bidders.
+/// [`ExternalId`] is useful for layer 2 solutions, where the contract acts as a secondary system;
+/// the ids can be set to anything that might be needed in the primary system. [`ExternalId`]s are
+/// not strictly needed, and can be left empty if they are unneeded.
+///
+/// Multiple bidders can be registered at once.
+///
+/// Requirements:
+///
+/// - Only the sender can add bidders.
+/// - The auction must not already have been started (by calling [`start_auction`].)
+/// - Bidders must not already be registered.
 #[action(shortname = 0x30, zk = true)]
-fn register_bidder(
+fn register_bidders(
     context: ContractContext,
     mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
-    bidder_id: i32,
-    address: Address,
+    bidder_definitions: Vec<AddressAndExternalId>,
 ) -> ContractState {
-    let bidder_id = BidderId { id: bidder_id };
-
+    assert!(
+        !state.auction_begun,
+        "Cannot register bidders after auction has begun"
+    );
     assert_eq!(
         context.sender, state.owner,
         "Only the owner can register bidders"
     );
 
-    assert!(
-        state
-            .registered_bidders
-            .iter()
-            .all(|x| x.address != address),
-        "Duplicate bidder address: {address:?}",
-    );
+    for bidder_def in bidder_definitions {
+        assert!(
+            !state.registered_bidders.contains_key(&bidder_def.address),
+            "Duplicate bidder address: {:?}",
+            bidder_def.address
+        );
 
-    assert!(
-        state
-            .registered_bidders
-            .iter()
-            .all(|x| x.bidder_id != bidder_id),
-        "Duplicate bidder id: {bidder_id:?}",
-    );
-
-    state
-        .registered_bidders
-        .push(RegisteredBidder { bidder_id, address });
+        state.registered_bidders.insert(
+            bidder_def.address,
+            RegisteredBidder {
+                external_id: bidder_def.external_id,
+                have_already_bid: false,
+            },
+        );
+    }
 
     state
 }
 
 /// Adds another bid variable to the ZkState.
+///
+/// Requirements:
+///
+/// - Only the bidders can place bids.
+/// - The auction must not already have been started (by calling [`start_auction`].)
+/// - Bidders must not already have placed a bid.
 #[zk_on_secret_input(shortname = 0x40)]
-fn add_bid(
+fn place_bid(
     context: ContractContext,
-    state: ContractState,
+    mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
 ) -> (
     ContractState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata, Sbi32>,
+    ZkInputDef<SecretVarMetadata, Sbu32>,
 ) {
-    let bidder_info = state
-        .registered_bidders
-        .iter()
-        .find(|x| x.address == context.sender);
-
-    let bidder_info = match bidder_info {
-        Some(bidder_info) => bidder_info,
-        None => panic!("{:?} is not a registered bidder", context.sender),
-    };
-
-    // Assert that only one bid is placed per bidder
     assert!(
-        zk_state
-            .secret_variables
-            .iter()
-            .chain(zk_state.pending_inputs.iter())
-            .all(|(_, v)| v.owner != context.sender),
-        "Each bidder is only allowed to send one bid. : {:?}",
-        bidder_info.bidder_id,
+        !state.auction_begun,
+        "Cannot place bid after auction has begun"
     );
 
-    let input_def = ZkInputDef::with_metadata(
-        None,
-        SecretVarMetadata {
-            bidder_id: bidder_info.bidder_id,
-        },
+    // Only bidders that have not already placed bids can bid.
+    let Some(mut bidder_info) = state.registered_bidders.get(&context.sender) else {
+        panic!("{:?} is not a registered bidder", context.sender)
+    };
+    assert!(
+        !bidder_info.have_already_bid,
+        "Each bidder is only allowed to place one bid: {:?}",
+        context.sender,
     );
+
+    let input_def = ZkInputDef::with_metadata(None, SecretVarMetadata { is_bid: true });
+
+    // Update state to track the bid.
+    bidder_info.have_already_bid = true;
+    state.registered_bidders.insert(context.sender, bidder_info);
 
     (state, vec![], input_def)
 }
 
-/// Allows the owner of the contract to start the computation, computing the winner of the auction.
+/// Singleton to indicate that a [`SecretVarMetadata`] is a result, and not a bid.
+const NOT_A_BID: SecretVarMetadata = SecretVarMetadata { is_bid: false };
+
+/// Starts the auction computation, which determines the winner of the auction among the existing
+/// bids.
+///
+/// Requirements:
+/// - Can only be run by the owner.
+/// - The auction must not already have started.
+/// - And at least [`MIN_NUM_BIDDERS`] must have placed their bids.
 ///
 /// The second price auction computation is beyond this call, involving several ZK computation steps.
 #[action(shortname = 0x01, zk = true)]
-fn compute_winner(
+fn start_auction(
     context: ContractContext,
-    state: ContractState,
+    mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
-    assert_eq!(
-        zk_state.calculation_state,
-        CalculationStatus::Waiting,
-        "Computation must start from Waiting state, but was {:?}",
-        zk_state.calculation_state,
+    assert!(
+        !state.auction_begun,
+        "Cannot start auction after it has already begun"
     );
-    assert_eq!(
-        zk_state.data_attestations.len(),
-        0,
-        "Auction must have exactly zero data_attestations at this point"
-    );
-
     assert_eq!(
         context.sender, state.owner,
         "Only contract owner can start the auction"
     );
     let amount_of_bidders = zk_state.secret_variables.len() as u32;
-
     assert!(
         amount_of_bidders >= MIN_NUM_BIDDERS,
         "At least {MIN_NUM_BIDDERS} bidders must have submitted bids for the auction to start",
     );
+
+    state.auction_begun = true;
 
     (
         state,
         vec![],
         vec![zk_compute::run_auction_start(
             Some(SHORTNAME_AUCTION_COMPUTE_COMPLETE),
-            [
-                &SecretVarMetadata {
-                    bidder_id: BidderId { id: -1 },
-                },
-                &SecretVarMetadata {
-                    bidder_id: BidderId { id: -1 },
-                },
-            ],
+            [&NOT_A_BID, &NOT_A_BID],
         )],
     )
 }
@@ -220,11 +237,6 @@ fn auction_compute_complete(
     zk_state: ZkState<SecretVarMetadata>,
     output_variables: Vec<SecretVarId>,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
-    assert_eq!(
-        zk_state.data_attestations.len(),
-        0,
-        "Auction must have exactly zero data_attestations at this point"
-    );
     (
         state,
         vec![],
@@ -243,24 +255,24 @@ fn open_auction_variable(
     zk_state: ZkState<SecretVarMetadata>,
     opened_variables: Vec<SecretVarId>,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
-    assert_eq!(
-        opened_variables.len(),
-        2,
-        "Unexpected number of output variables"
-    );
-    assert_eq!(
-        zk_state.data_attestations.len(),
-        0,
-        "Auction must have exactly zero data_attestations at this point"
-    );
+    let highest_bid_id: SecretVarId = read_variable(&zk_state, opened_variables.first()).unwrap();
+
+    let winner_bid = zk_state
+        .get_variable(highest_bid_id)
+        .expect("Variable must exist");
+
+    let highest_bidder = state.registered_bidders.get(&winner_bid.owner).unwrap();
 
     let auction_result = AuctionResult {
-        winner: read_variable(&zk_state, opened_variables.first()),
-        second_highest_bid: read_variable(&zk_state, opened_variables.get(1)),
+        winner: AddressAndExternalId {
+            external_id: highest_bidder.external_id,
+            address: winner_bid.owner,
+        },
+        second_highest_bid: read_variable(&zk_state, opened_variables.get(1)).unwrap(),
     };
 
     let attest_request = ZkStateChange::Attest {
-        data_to_attest: serialize_as_big_endian(&auction_result),
+        data_to_attest: serialize_as_state(&auction_result),
     };
 
     (state, vec![], vec![attest_request])
@@ -274,11 +286,6 @@ fn auction_results_attested(
     zk_state: ZkState<SecretVarMetadata>,
     attestation_id: AttestationId,
 ) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
-    assert_eq!(
-        zk_state.data_attestations.len(),
-        1,
-        "Auction must have exactly one attestation"
-    );
     let attestation = zk_state.get_attestation(attestation_id).unwrap();
 
     assert_eq!(attestation.signatures.len(), 4, "Must have four signatures");
@@ -288,7 +295,7 @@ fn auction_results_attested(
         "Attestation must be complete"
     );
 
-    let auction_result = AuctionResult::rpc_read_from(&mut attestation.data.as_slice());
+    let auction_result = AuctionResult::state_read_from(&mut attestation.data.as_slice());
 
     state.auction_result = Some(auction_result);
 
@@ -296,9 +303,9 @@ fn auction_results_attested(
 }
 
 /// Writes some value as RPC data.
-fn serialize_as_big_endian<T: WriteRPC>(it: &T) -> Vec<u8> {
+fn serialize_as_state<T: ReadWriteState>(it: &T) -> Vec<u8> {
     let mut output: Vec<u8> = vec![];
-    it.rpc_write_to(&mut output).expect("Could not serialize");
+    it.state_write_to(&mut output).expect("Could not serialize");
     output
 }
 
@@ -306,9 +313,6 @@ fn serialize_as_big_endian<T: WriteRPC>(it: &T) -> Vec<u8> {
 fn read_variable<T: ReadWriteState>(
     zk_state: &ZkState<SecretVarMetadata>,
     variable_id: Option<&SecretVarId>,
-) -> T {
-    let variable_id = *variable_id.unwrap();
-    let variable = zk_state.get_variable(variable_id).unwrap();
-    let buffer: Vec<u8> = variable.data.clone().unwrap();
-    T::state_read_from(&mut buffer.as_slice())
+) -> Option<T> {
+    zk_state.get_variable(*variable_id?)?.open_value::<T>()
 }
