@@ -1,16 +1,24 @@
 package examples;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.partisiablockchain.BlockchainAddress;
 import com.partisiablockchain.language.abicodegen.ZkSecondPriceAuction;
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
+import com.partisiablockchain.language.junit.FuzzyState;
 import com.partisiablockchain.language.junit.JunitContractTest;
+import com.partisiablockchain.language.testenvironment.zk.node.EvmDataBuilder;
+import com.partisiablockchain.language.testenvironment.zk.node.EvmEventLogBuilder;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
+import org.bouncycastle.jcajce.provider.digest.Keccak;
+import org.bouncycastle.util.encoders.Hex;
 
 /** Test {@link ZkSecondPriceAuction}. */
 public final class ZkSecondPriceAuctionTest extends JunitContractTest {
@@ -20,10 +28,13 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_second_price_auction.pbc"),
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_second_price_auction_runner"));
 
+  private static final String ETH_CONTRACT_ADDRESS = "93b080860e7fb5745d11f081cd15556e1d72a15d";
+
   private List<BlockchainAddress> accounts;
   private BlockchainAddress owner;
+  private BlockchainAddress auctionAddress;
 
-  private BlockchainAddress auctionContract;
+  private ZkSecondPriceAuction auctionContract;
 
   /** Deploy auction contract. */
   @ContractTest
@@ -31,36 +42,48 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
     accounts = IntStream.range(1, 10).mapToObj(blockchain::newAccount).toList();
     owner = blockchain.newAccount(999);
 
-    auctionContract =
+    auctionAddress =
         blockchain.deployZkContract(owner, CONTRACT_BYTES, ZkSecondPriceAuction.initialize());
+    auctionContract = new ZkSecondPriceAuction(getStateClient(), auctionAddress);
 
-    ZkSecondPriceAuction.ContractState state =
-        ZkSecondPriceAuction.ContractState.deserialize(
-            blockchain.getContractState(auctionContract));
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
 
-    Assertions.assertThat(state).isNotNull();
+    Assertions.assertThat(state.owner()).isEqualTo(owner);
+    Assertions.assertThat(state.registeredBidders().size()).isEqualTo(0);
+    Assertions.assertThat(state.auctionResult()).isNull();
+    FuzzyState contractState = blockchain.getContractStateJson(auctionAddress);
+    JsonNode attestations = contractState.getNode("/attestations");
+    Assertions.assertThat(attestations).isEmpty();
   }
 
-  /** Contract owner can register which users can bid on the contract. */
+  /** Contract owner can add subscription to bidder registration events. */
   @ContractTest(previous = "deploy")
-  void setupBidders() {
-    registerBidders(
-        owner,
-        List.of(
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(1), externalId(1)),
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(2), externalId(2)),
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(3), externalId(3)),
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(4), externalId(4)),
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(5), externalId(5)),
-            new ZkSecondPriceAuction.AddressAndExternalId(accounts.get(6), externalId(6))));
+  void subscribeToBidderRegistration() {
+    subscribeToBidderRegistrationEvents(owner, Hex.decode(ETH_CONTRACT_ADDRESS));
+
+    FuzzyState contractState = blockchain.getContractStateJson(auctionAddress);
+    JsonNode subscriptions = contractState.getNode("/externalEvents/subscriptions");
+    Assertions.assertThat(subscriptions).hasSize(1);
+    JsonNode subscription = subscriptions.get(0);
+    JsonNode eventSignatureFilter =
+        subscription.get("value").get("topics").get(0).get("topics").get(0).get("topic");
+    Assertions.assertThat(eventSignatureFilter.toString().replace("\"", ""))
+        .isEqualTo(Hex.toHexString(registrationCompleteEventSignature()));
   }
 
-  private static ZkSecondPriceAuction.ExternalId externalId(int b) {
-    return new ZkSecondPriceAuction.ExternalId(new byte[] {0, (byte) b});
+  /** Bidders can be registered via an external event. */
+  @ContractTest(previous = "subscribeToBidderRegistration")
+  void registerBidders() {
+    registerAndAssertBidder(1, accounts.get(1), 1);
+    registerAndAssertBidder(2, accounts.get(2), 2);
+    registerAndAssertBidder(3, accounts.get(3), 3);
+    registerAndAssertBidder(4, accounts.get(4), 4);
+    registerAndAssertBidder(5, accounts.get(5), 5);
+    registerAndAssertBidder(6, accounts.get(6), 6);
   }
 
   /** Registered users can bid on the contract. */
-  @ContractTest(previous = "setupBidders")
+  @ContractTest(previous = "registerBidders")
   void placeBidsOnContract() {
     // Bids
     bidOnContract(accounts.get(1), 10);
@@ -76,37 +99,21 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
   void startAuctionOnContract() {
     startAuction(owner);
 
-    ZkSecondPriceAuction.ContractState state =
-        ZkSecondPriceAuction.ContractState.deserialize(
-            blockchain.getContractState(auctionContract));
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
 
     Assertions.assertThat(state.auctionResult().secondHighestBid()).isEqualTo(256);
     Assertions.assertThat(state.auctionResult().winner().address()).isEqualTo(accounts.get(2));
-    Assertions.assertThat(state.auctionResult().winner().externalId().idBytes())
-        .containsExactly(0, 2);
+    Assertions.assertThat(state.auctionResult().winner().externalId()).isEqualTo(2);
 
     final var complexity = zkNodes.getComplexityOfLastComputation();
     Assertions.assertThat(complexity.numberOfRounds()).isEqualTo(364);
     Assertions.assertThat(complexity.multiplicationCount()).isEqualTo(1792);
   }
 
-  /** Only the owner can register users. */
-  @ContractTest(previous = "setupBidders")
-  void nonOwnerFailsToRegisterUsers() {
-    Assertions.assertThatCode(() -> registerBidders(accounts.get(6), List.of()))
-        .hasMessageContaining("Only the owner can register bidders");
-  }
-
   /** The same user cannot be registered twice. */
-  @ContractTest(previous = "setupBidders")
+  @ContractTest(previous = "registerBidders")
   void registerTwice() {
-    Assertions.assertThatCode(
-            () ->
-                registerBidders(
-                    owner,
-                    List.of(
-                        new ZkSecondPriceAuction.AddressAndExternalId(
-                            accounts.get(1), externalId(1)))))
+    Assertions.assertThatCode(() -> registerBidder(1, accounts.get(1), 6))
         .hasMessageContaining("Duplicate bidder address");
   }
 
@@ -139,10 +146,10 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
             "At least 3 bidders must have submitted bids for the auction to start");
   }
 
-  /** Contract owner can register which users can bid on the contract. */
+  /** Bidders cannot be registered after auction is done. */
   @ContractTest(previous = "startAuctionOnContract")
   void failToSetupBiddersAfterAuctionIsDone() {
-    Assertions.assertThatCode(() -> registerBidders(owner, List.of()))
+    Assertions.assertThatCode(() -> registerBidder(32, owner, 7))
         .hasMessageContaining("Cannot register bidders after auction has begun");
   }
 
@@ -160,18 +167,53 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
         .hasMessageContaining("Cannot start auction after it has already begun");
   }
 
-  private void registerBidders(
-      BlockchainAddress sender, List<ZkSecondPriceAuction.AddressAndExternalId> bidders) {
-    blockchain.sendAction(sender, auctionContract, ZkSecondPriceAuction.registerBidders(bidders));
+  private static byte[] registrationCompleteEventSignature() {
+    Keccak.Digest256 keccak = new Keccak.Digest256();
+    return keccak.digest("RegistrationComplete(int32,bytes21)".getBytes(StandardCharsets.UTF_8));
+  }
+
+  private void subscribeToBidderRegistrationEvents(BlockchainAddress sender, byte[] evmAddress) {
+    byte[] subscribeRpc =
+        ZkSecondPriceAuction.subscribeToBidderRegistration(evmAddress, BigInteger.ONE);
+    blockchain.sendAction(sender, auctionAddress, subscribeRpc);
+  }
+
+  private void registerBidder(int bidderId, BlockchainAddress bidderAccount, long block) {
+    EvmEventLogBuilder log =
+        new EvmEventLogBuilder()
+            // Workaround: block number is set since `TestZkNode` does not remember last block
+            // between tests.
+            .block(block)
+            .from(ETH_CONTRACT_ADDRESS)
+            .withTopic0(registrationCompleteEventSignature())
+            .withData(new EvmDataBuilder().append(bidderId).append(bidderAccount));
+    zkNodes.relayEvmEvent(log, auctionAddress);
+  }
+
+  private void registerAndAssertBidder(
+      int bidderId, BlockchainAddress bidderAccount, int expectedBidderCount) {
+    EvmEventLogBuilder log =
+        new EvmEventLogBuilder()
+            .from(ETH_CONTRACT_ADDRESS)
+            .withTopic0(registrationCompleteEventSignature())
+            .withData(new EvmDataBuilder().append(bidderId).append(bidderAccount));
+    zkNodes.relayEvmEvent(log, auctionAddress);
+
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
+    Assertions.assertThat(state.registeredBidders().size()).isEqualTo(expectedBidderCount);
+    ZkSecondPriceAuction.RegisteredBidder registeredBidder =
+        state.registeredBidders().get(bidderAccount);
+    Assertions.assertThat(registeredBidder.externalId()).isEqualTo(bidderId);
+    Assertions.assertThat(registeredBidder.haveAlreadyBid()).isEqualTo(false);
   }
 
   private void bidOnContract(BlockchainAddress bidder, int bidAmount) {
     CompactBitArray secretRpc =
         BitOutput.serializeBits(output -> output.writeUnsignedInt(bidAmount, 32));
-    blockchain.sendSecretInput(auctionContract, bidder, secretRpc, new byte[] {0x40});
+    blockchain.sendSecretInput(auctionAddress, bidder, secretRpc, new byte[] {0x40});
   }
 
   private void startAuction(BlockchainAddress sender) {
-    blockchain.sendAction(sender, auctionContract, ZkSecondPriceAuction.startAuction());
+    blockchain.sendAction(sender, auctionAddress, ZkSecondPriceAuction.startAuction());
   }
 }

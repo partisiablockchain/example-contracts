@@ -6,7 +6,7 @@ extern crate pbc_contract_common;
 
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
-use pbc_contract_common::avl_tree_map::AvlTreeMap;
+use pbc_contract_common::avl_tree_map::AvlTreeSet;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{CalculationStatus, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
@@ -44,10 +44,6 @@ struct VoteResult {
     passed: bool,
 }
 
-/// Unit type for [`ContractState::already_voted`] set of users that have voted.
-#[derive(ReadWriteState, CreateTypeSpec, Clone)]
-struct Unit {}
-
 /// This contract's state
 #[state]
 struct ContractState {
@@ -62,7 +58,7 @@ struct ContractState {
     /// eventually updated to Some(VoteResult) after start_vote_counting is called
     vote_result: Option<VoteResult>,
     /// Maintains the set of voters that have already voted.
-    already_voted: AvlTreeMap<Address, Unit>,
+    already_voted: AvlTreeSet<Address>,
 }
 
 /// Initializes contract
@@ -81,7 +77,7 @@ fn initialize(
         owner: ctx.sender,
         deadline_voting_time,
         vote_result: None,
-        already_voted: AvlTreeMap::new(),
+        already_voted: AvlTreeSet::new(),
     }
 }
 
@@ -105,7 +101,7 @@ fn add_vote(
         context.block_production_time,
     );
     assert!(
-        !state.already_voted.contains_key(&context.sender),
+        !state.already_voted.contains(&context.sender),
         "Each voter is only allowed to send one vote variable. Sender: {:?}",
         context.sender
     );
@@ -115,7 +111,7 @@ fn add_vote(
             variable_type: SecretVarType::Vote,
         },
     );
-    state.already_voted.insert(context.sender, Unit {});
+    state.already_voted.insert(context.sender);
     (state, vec![], input_def)
 }
 
