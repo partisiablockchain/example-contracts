@@ -8,11 +8,18 @@ extern crate pbc_contract_common;
 mod zk_compute;
 
 use create_type_spec_derive::CreateTypeSpec;
+use pbc_contract_codegen::zk_on_external_event;
 use pbc_contract_common::address::Address;
+use pbc_contract_common::address::AddressType::Account;
 use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
-use pbc_contract_common::zk::{AttestationId, SecretVarId, ZkInputDef, ZkState, ZkStateChange};
+use pbc_contract_common::zk::evm_event::{EvmAddress, EvmEventFilter};
+use pbc_contract_common::zk::{
+    AttestationId, EventSubscriptionId, ExternalEventId, SecretVarId, ZkInputDef, ZkState,
+    ZkStateChange,
+};
+use pbc_contract_common::U256;
 use pbc_traits::ReadWriteState;
 use pbc_zk::Sbu32;
 use read_write_rpc_derive::ReadRPC;
@@ -21,7 +28,7 @@ use read_write_state_derive::ReadWriteState;
 
 /// Secret variable metadata. Contains unique ID of the bidder.
 #[derive(ReadWriteState, ReadRPC, WriteRPC, Debug)]
-struct SecretVarMetadata {
+pub struct SecretVarMetadata {
     is_bid: bool,
 }
 
@@ -40,15 +47,8 @@ struct RegisteredBidder {
     have_already_bid: bool,
 }
 
-/// An id that is assigned in the [`register_bidder`] invocation. Part of the attestation,
-/// allowing external systems to easily use their own idenfiers.
-///
-/// Part of the attested data when an auction is won.
-#[derive(ReadWriteState, ReadRPC, WriteRPC, CreateTypeSpec, Debug)]
-struct ExternalId {
-    /// Identifier bytes
-    id_bytes: Vec<u8>,
-}
+/// An id that is assigned in
+type ExternalId = i32;
 
 /// Struct used for [`register_bidders`]. Includes both the bidder's PBC blockchain [`Address`],
 /// and any external id that the owner has decided to attach.
@@ -62,7 +62,7 @@ struct AddressAndExternalId {
 
 /// This state of the contract.
 #[state]
-struct ContractState {
+pub struct ContractState {
     /// Owner of the contract
     owner: Address,
     /// Registered bidders - only registered bidders are allowed to bid.
@@ -94,52 +94,87 @@ fn initialize(context: ContractContext, zk_state: ZkState<SecretVarMetadata>) ->
     }
 }
 
-/// Registers new bidders, by specifying their [`Address`]es and their [`ExternalId`].
+/// Allows owner to subscribe to bidder registration events emitted by a corresponding public
+/// auction contract deployed on Ethereum.
 ///
-/// [`ExternalId`] is useful for layer 2 solutions, where the contract acts as a secondary system;
-/// the ids can be set to anything that might be needed in the primary system. [`ExternalId`]s are
-/// not strictly needed, and can be left empty if they are unneeded.
-///
-/// Multiple bidders can be registered at once.
-///
-/// Requirements:
-///
-/// - Only the sender can add bidders.
-/// - The auction must not already have been started (by calling [`start_auction`].)
-/// - Bidders must not already be registered.
-#[action(shortname = 0x30, zk = true)]
-fn register_bidders(
+/// The subscription filters on events with the signature 'RegistrationComplete(uint32,bytes21)'
+#[action(shortname = 0x15, zk = true)]
+fn subscribe_to_bidder_registration(
+    context: ContractContext,
+    state: ContractState,
+    zk_state: ZkState<SecretVarMetadata>,
+    address: EvmAddress,
+    from_block: U256,
+) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
+    assert_eq!(
+        context.sender, state.owner,
+        "Only contract owner can add subscriptions"
+    );
+
+    // keccak256("RegistrationComplete(uint32,bytes21)") hash of event signature
+    let event_signature = [
+        0x33, 0x7d, 0x88, 0x9a, 0xe7, 0x66, 0x1a, 0x7c, 0x69, 0x72, 0xd5, 0x07, 0x56, 0x1a, 0x8c,
+        0xff, 0x17, 0x95, 0x25, 0x57, 0x4a, 0x9c, 0x40, 0xea, 0x30, 0x6e, 0x81, 0xb8, 0x28, 0x40,
+        0xea, 0xb5,
+    ];
+
+    // Filter out all events with a signature that exactly matches 'event_signature'.
+    // Of these, ignore all blocks older than the specified 'from_block' (it may take some time
+    // to read from the ignored blocks before reaching blocks that are relevant.)
+    let filter = EvmEventFilter::builder(address)
+        .exact_match(event_signature)
+        .filter_from_block(from_block)
+        .build();
+
+    (
+        state,
+        vec![],
+        vec![ZkStateChange::SubscribeToEvmEvents {
+            chain_id: "Ethereum".to_string(),
+            filter,
+        }],
+    )
+}
+
+/// Receives events for the subscriptions (bidder registrations) and updates ContractState with
+/// bidder information read from the event.
+#[zk_on_external_event]
+pub fn receive_registered_bidder_event(
     context: ContractContext,
     mut state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
-    bidder_definitions: Vec<AddressAndExternalId>,
-) -> ContractState {
+    subscription_id: EventSubscriptionId,
+    event_id: ExternalEventId,
+) -> (ContractState, Vec<EventGroup>, Vec<ZkStateChange>) {
     assert!(
         !state.auction_begun,
         "Cannot register bidders after auction has begun"
     );
-    assert_eq!(
-        context.sender, state.owner,
-        "Only the owner can register bidders"
+
+    let event_data: Vec<u8> = zk_state.external_events.get(&event_id).unwrap().data;
+    let bidder_id: ExternalId =
+        i32::from_be_bytes(event_data.as_slice()[28..32].try_into().unwrap());
+    let mut pbc_address_buffer: [u8; 20] = [0; 20];
+    pbc_address_buffer.clone_from_slice(&event_data[33..53]);
+    let pbc_account = Address {
+        address_type: Account,
+        identifier: pbc_address_buffer,
+    };
+
+    assert!(
+        !state.registered_bidders.contains_key(&pbc_account),
+        "Duplicate bidder address: {pbc_account:?}",
     );
 
-    for bidder_def in bidder_definitions {
-        assert!(
-            !state.registered_bidders.contains_key(&bidder_def.address),
-            "Duplicate bidder address: {:?}",
-            bidder_def.address
-        );
+    state.registered_bidders.insert(
+        pbc_account,
+        RegisteredBidder {
+            external_id: bidder_id,
+            have_already_bid: false,
+        },
+    );
 
-        state.registered_bidders.insert(
-            bidder_def.address,
-            RegisteredBidder {
-                external_id: bidder_def.external_id,
-                have_already_bid: false,
-            },
-        );
-    }
-
-    state
+    (state, vec![], vec![])
 }
 
 /// Adds another bid variable to the ZkState.
@@ -221,7 +256,7 @@ fn start_auction(
         state,
         vec![],
         vec![zk_compute::run_auction_start(
-            Some(SHORTNAME_AUCTION_COMPUTE_COMPLETE),
+            Some(SHORTNAME_CLOSE_AUCTION),
             [&NOT_A_BID, &NOT_A_BID],
         )],
     )
@@ -231,7 +266,7 @@ fn start_auction(
 ///
 /// The only thing we do is instantly open/declassify the output variables.
 #[zk_on_compute_complete(shortname = 0x42)]
-fn auction_compute_complete(
+fn close_auction(
     context: ContractContext,
     state: ContractState,
     zk_state: ZkState<SecretVarMetadata>,
