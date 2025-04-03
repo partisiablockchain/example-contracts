@@ -1,6 +1,10 @@
 # DNS
 
-An example contract implementing a DNS.
+Example contract implementing a simplified DNS, which allows users to name
+individual contract addresses, much like the world-wide DNS system names IP
+addresses.
+
+## Usage
 
 The DNS contract works by registering a domain to a given address, which can then be looked up by others.
 Only the person registering a domain can remove it and update its corresponding address.

@@ -13,7 +13,6 @@ import com.partisiablockchain.language.testenvironment.dependencies.GovernanceId
 import com.partisiablockchain.language.testenvironment.dependencies.GovernanceLoader;
 import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
 
 /**
  * Test suite for upgradable smart contracts.
@@ -44,7 +43,7 @@ public final class UpgradableTest extends JunitContractTest {
   private BlockchainAddress upgrader;
   private BlockchainAddress upgradableContract;
 
-  @DisplayName("Upgradable V1 can be deployed")
+  /** Upgradable V1 can be deployed. */
   @ContractTest
   void deployV1() {
     upgrader = blockchain.newAccount(1);
@@ -62,7 +61,23 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(0);
   }
 
-  @DisplayName("Upgradable V1s counter is incremented by one")
+  /** Can deploy V2. */
+  @ContractTest
+  void canDeployV2() {
+    BlockchainAddress deployer = blockchain.newAccount(42);
+    byte[] initRpc = UpgradableV2.initialize(deployer);
+    var unused = blockchain.deployContract(deployer, CONTRACT_BYTES_V2, initRpc);
+  }
+
+  /** Can deploy V3. */
+  @ContractTest
+  void canDeployV3() {
+    BlockchainAddress deployer = blockchain.newAccount(42);
+    byte[] initRpc = UpgradableV3.initialize();
+    var unused = blockchain.deployContract(deployer, CONTRACT_BYTES_V3, initRpc);
+  }
+
+  /** Upgradable V1s counter is incremented by one. */
   @ContractTest(previous = "deployV1")
   void incrementV1byOne() {
     byte[] incrRpc = UpgradableV1.incrementCounterByOne();
@@ -75,7 +90,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(1);
   }
 
-  @DisplayName("Upgradable V1 can be upgraded to V2")
+  /** Upgradable V1 can be upgraded to V2. */
   @ContractTest(previous = "incrementV1byOne")
   void upgradeV1ToV2() {
     blockchain.upgradeContract(upgrader, upgradableContract, CONTRACT_BYTES_V2, new byte[0]);
@@ -87,7 +102,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(1); // Counter should still be one
   }
 
-  @DisplayName("Upgradable V1 cannot be upgraded to V1")
+  /** Upgradable V1 cannot be upgraded to V1. */
   @ContractTest(previous = "deployV1")
   void cannotUpgradeFromV1ToV1() {
     Assertions.assertThatThrownBy(
@@ -99,7 +114,7 @@ public final class UpgradableTest extends JunitContractTest {
             "Contract does not implement \"upgrade\", and can thus not be upgraded to");
   }
 
-  @DisplayName("Non-upgraders cannot upgrade V1")
+  /** Non-upgraders cannot upgrade V1. */
   @ContractTest(previous = "deployV1")
   void onlyUpgraderCanUpgrade() {
     BlockchainAddress user2 = blockchain.newAccount(2);
@@ -111,7 +126,7 @@ public final class UpgradableTest extends JunitContractTest {
         .hasMessageContaining("Contract did not allow this upgrade");
   }
 
-  @DisplayName("Upgradable V2's logic replaced V1's")
+  /** Upgradable V2's logic replaced V1's. */
   @ContractTest(previous = "upgradeV1ToV2")
   void incrementV2ByTwo() {
     byte[] incrRpc = UpgradableV2.incrementCounterByTwo();
@@ -123,7 +138,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(3);
   }
 
-  @DisplayName("Upgrader can propose upgrade from V2 to V3")
+  /** Upgrader can propose upgrade from V2 to V3. */
   @ContractTest(previous = "incrementV2ByTwo")
   void upgraderCanProposeUpgrade() {
     byte[] upgradeRpc = UpgradableV2.allowUpgradeTo(contractHashes(CONTRACT_BYTES_V3), new byte[0]);
@@ -136,7 +151,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.upgradableTo()).isNotNull();
   }
 
-  @DisplayName("Upgradable V2 can be upgraded to to V3 if proposed")
+  /** Upgradable V2 can be upgraded to to V3 if proposed. */
   @ContractTest(previous = "upgraderCanProposeUpgrade")
   void upgradeV2ToV3() {
     BlockchainAddress user = blockchain.newAccount(2);
@@ -148,7 +163,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(3);
   }
 
-  @DisplayName("Upgradable V3's logic replaced V2's")
+  /** Upgradable V3's logic replaced V2's. */
   @ContractTest(previous = "upgradeV2ToV3")
   void incrementV3ByFour() {
     UpgradableV3.ContractState state =
@@ -163,7 +178,7 @@ public final class UpgradableTest extends JunitContractTest {
     Assertions.assertThat(state.counter()).isEqualTo(7);
   }
 
-  @DisplayName("V3 cannot be upgraded")
+  /** V3 cannot be upgraded. */
   @ContractTest(previous = "upgradeV2ToV3")
   void contractV3CannotBeUpgraded() {
     Assertions.assertThatThrownBy(
@@ -175,7 +190,7 @@ public final class UpgradableTest extends JunitContractTest {
             "Contract does not implement \"upgrade_is_allowed\", and defaults to not upgradable");
   }
 
-  @DisplayName("Non-upgraders cannot propose upgrades")
+  /** Non-upgraders cannot propose upgrades. */
   @ContractTest(previous = "upgradeV1ToV2")
   void nonUpgradersCannotProposeUpgrade() {
     final Hash dummyHash =
@@ -195,7 +210,7 @@ public final class UpgradableTest extends JunitContractTest {
             "The upgrade_proposer is the only address allowed to propose upgrades");
   }
 
-  @DisplayName("Upgrade fails V2 to V3 if the contract does not match proposal")
+  /** Upgrade fails V2 to V3 if the contract does not match proposal. */
   @ContractTest(previous = "upgradeV1ToV2")
   void cannotUpgradeWithNoProposal() {
     BlockchainAddress user = blockchain.newAccount(2);
@@ -207,7 +222,7 @@ public final class UpgradableTest extends JunitContractTest {
         .hasMessageContaining("Given contract code does not match approved hashes!");
   }
 
-  @DisplayName("V2 cannot be upgraded to V1")
+  /** V2 cannot be upgraded to V1. */
   @ContractTest(previous = "upgradeV1ToV2")
   void contractV2CannotUpgradeToV1() {
     // Make a valid proposal

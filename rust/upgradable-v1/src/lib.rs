@@ -1,12 +1,13 @@
 #![doc = include_str!("../README.md")]
 
+mod upgrade_to;
+
 #[macro_use]
 extern crate pbc_contract_codegen;
-use pbc_contract_codegen::{init, state, upgrade_is_allowed};
+use pbc_contract_codegen::{init, state};
 
 use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
-use pbc_contract_common::upgrade::ContractHashes;
 
 /// Contract state.
 #[state]
@@ -24,20 +25,6 @@ pub fn initialize(_ctx: ContractContext, upgrader: Address) -> ContractState {
         counter: 0,
         upgrader,
     }
-}
-
-/// Checks whether the upgrade is allowed.
-///
-/// This contract allows the [`ContractState::upgrader`] to upgrade the contract at any time.
-#[upgrade_is_allowed]
-pub fn is_upgrade_allowed(
-    context: ContractContext,
-    state: ContractState,
-    _old_contract_hashes: ContractHashes,
-    _new_contract_hashes: ContractHashes,
-    _new_contract_rpc: Vec<u8>,
-) -> bool {
-    context.sender == state.upgrader
 }
 
 /// Increment the counter by one.

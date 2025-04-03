@@ -2,7 +2,7 @@ use pbc_zk::*;
 
 /// Output variable type
 #[derive(pbc_zk::SecretBinary, Clone)]
-struct RandomnessInput {
+pub struct RandomnessInput {
     /// Token amount.
     d1: Sbi8,
     d2: Sbi8,
