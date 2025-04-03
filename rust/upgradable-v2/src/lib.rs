@@ -42,32 +42,6 @@ pub fn initialize(_ctx: ContractContext, upgrade_proposer: Address) -> ContractS
     }
 }
 
-/// Checks whether the upgrade is allowed.
-///
-/// This contract requires the upgraded contract to be pre-approved using [`allow_upgrade_to`].
-///
-/// The caller does not need to have any permission, as long as the target contract is the
-/// predefined one.
-#[upgrade_is_allowed]
-pub fn is_upgrade_allowed(
-    _context: ContractContext,
-    state: ContractState,
-    _old_hashes: ContractHashes,
-    new_contract_hashes: ContractHashes,
-    upgrade_rpc: Vec<u8>,
-) -> bool {
-    let given_upgrade_info = UpgradeTarget {
-        new_contract_hashes,
-        upgrade_rpc,
-    };
-    assert_eq!(
-        Some(given_upgrade_info),
-        state.upgradable_to,
-        "Given contract code does not match approved hashes!"
-    );
-    true
-}
-
 /// Increment the counter by two.
 #[action(shortname = 0x01)]
 pub fn increment_counter_by_two(
