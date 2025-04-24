@@ -4,8 +4,8 @@ use pbc_zk::*;
 #[derive(pbc_zk::SecretBinary, Clone)]
 pub struct RandomnessInput {
     /// Token amount.
-    d1: Sbi8,
-    d2: Sbi8,
+    d1: Sbu8,
+    d2: Sbu8,
 }
 
 /// Perform a zk computation on secret-shared randomness added to make a random dice throw.
@@ -16,8 +16,8 @@ pub struct RandomnessInput {
 #[zk_compute(shortname = 0x61)]
 pub fn compute_dice_throw() -> RandomnessInput {
     let mut throw = RandomnessInput {
-        d1: Sbi8::from(0),
-        d2: Sbi8::from(0),
+        d1: Sbu8::from(0),
+        d2: Sbu8::from(0),
     };
 
     for variable_id in secret_variable_ids() {
@@ -34,10 +34,10 @@ pub fn compute_dice_throw() -> RandomnessInput {
 }
 
 /// Reduce the contribution if it is not between 0 and 5.
-fn reduce_contribution(value: Sbi8) -> Sbi8 {
-    let reduce = value & Sbi8::from(0b111);
-    if reduce >= Sbi8::from(6) {
-        reduce - Sbi8::from(6)
+fn reduce_contribution(value: Sbu8) -> Sbu8 {
+    let reduce = value & Sbu8::from(0b111);
+    if reduce >= Sbu8::from(6) {
+        reduce - Sbu8::from(6)
     } else {
         reduce
     }

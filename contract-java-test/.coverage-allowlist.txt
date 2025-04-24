@@ -2,6 +2,7 @@ mia-game/src/lib.rs
 mia-game/src/zk_compute.rs
 off-chain-secret-sharing/src/lib.rs            # junit does not support coverage for off-chain code
 off-chain-secret-sharing/src/signatures.rs     # junit does not support coverage for off-chain code
+off-chain-secret-sharing/src/http_router.rs    # junit does not support coverage for off-chain code
 upgradable-v1/src/upgrade_to.rs                # junit does not support coverage for the upgrade logic
 upgradable-v2/src/upgrade_from.rs              # junit does not support coverage for the upgrade logic
 upgradable-v3/src/upgrade_from.rs              # junit does not support coverage for the upgrade logic

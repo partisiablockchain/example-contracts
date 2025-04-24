@@ -13,7 +13,7 @@ use pbc_contract_common::context::ContractContext;
 #[state]
 pub struct ContractState {
     /// Contract or account allowed to upgrade this contract.
-    upgrader: Address,
+    pub upgrader: Address,
     /// Counter to demonstrate changes in behaviour
     counter: u32,
 }

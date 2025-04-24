@@ -1,4 +1,8 @@
-# Mia Gaming Contract
+# Mia (Game)
+
+Smart contract for playing the simple dice game Mia, using secret-shared variables to 
+hide die throws from other players.
+
 
 ## Rules
 

@@ -3,8 +3,8 @@
 The simplest possible upgradable example contract that retains some amount of
 security and usability.
 
-The [`UpgradableV1State`] contains the address of the account or contract that is
-allowed to upgrade this contract.
+The `UpgradableV1State` contains the address of the account or contract that is
+allowed to upgrade it.
 
 Contract can only be upgraded to a different contract, it cannot be upgraded to
 itself, or from any other kind of contract.

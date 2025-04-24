@@ -1,7 +1,7 @@
 # Petition
 
-Example smart contract implementing a simple petition signing. 
+Simplified smart contract demonstrating functionality for petition signing. 
 
-How it works
+## Usage
 * The owner of the petition deploys it with a description of what other users are signing.
 * Other users can then sign the petition.

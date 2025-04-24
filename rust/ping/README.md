@@ -1,10 +1,9 @@
-
 # Ping
 
-An example contract implementing a simple ping functionality.
+Example contract implementing a simple ping functionality.
 
 ### Functionality
-Users can utilize the `ping` functionality of this contract mainly for two things:
+Users can utilize the `ping` functionality is mainly for two things:
 * Check for the existence of other contracts.
 * Transfer gas to a destination contract.
 

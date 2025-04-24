@@ -56,7 +56,7 @@ public final class MultiVotingTest extends JunitContractTest {
     MultiVotingContract.MultiVotingState state =
         MultiVotingContract.MultiVotingState.deserialize(blockchain.getContractState(multiVoting));
     Assertions.assertThat(state.votingContracts().size()).isEqualTo(1);
-    Assertions.assertThat(state.votingContracts().get((long) 10)).isNotNull();
+    Assertions.assertThat(state.votingContracts().get(10L)).isNotNull();
   }
 
   /** Only the owner is allowed to deploy new voting contracts. */
@@ -87,7 +87,7 @@ public final class MultiVotingTest extends JunitContractTest {
     MultiVotingContract.MultiVotingState state =
         MultiVotingContract.MultiVotingState.deserialize(blockchain.getContractState(multiVoting));
     Assertions.assertThat(state.votingContracts().size()).isEqualTo(1);
-    Assertions.assertThat(state.votingContracts().get((long) 10)).isNotNull();
+    Assertions.assertThat(state.votingContracts().get(10L)).isNotNull();
   }
 
   /** If there are no eligible voters it is not possible to deploy a new voting contract. */
@@ -199,7 +199,7 @@ public final class MultiVotingTest extends JunitContractTest {
     blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc);
     MultiVotingContract.MultiVotingState state =
         MultiVotingContract.MultiVotingState.deserialize(blockchain.getContractState(multiVoting));
-    BlockchainAddress votingContractAddress = state.votingContracts().get((long) 12);
+    BlockchainAddress votingContractAddress = state.votingContracts().get(12L);
     Voting.VoteState voteState =
         Voting.VoteState.deserialize(blockchain.getContractState(votingContractAddress));
     Assertions.assertThat(voteState.voters().contains(voter1)).isTrue();
@@ -215,7 +215,7 @@ public final class MultiVotingTest extends JunitContractTest {
     blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc);
     MultiVotingContract.MultiVotingState state =
         MultiVotingContract.MultiVotingState.deserialize(blockchain.getContractState(multiVoting));
-    BlockchainAddress votingContractAddress = state.votingContracts().get((long) 12);
+    BlockchainAddress votingContractAddress = state.votingContracts().get(12L);
     Voting.VoteState voteState =
         Voting.VoteState.deserialize(blockchain.getContractState(votingContractAddress));
     Assertions.assertThat(voteState.voters().contains(voter1)).isTrue();

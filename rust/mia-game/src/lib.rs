@@ -15,7 +15,7 @@ use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::sorted_vec_map::{SortedVecMap, SortedVecSet};
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use pbc_traits::ReadWriteState;
-use pbc_zk::{Sbi8, SecretBinary};
+use pbc_zk::{Sbu8, SecretBinary};
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
@@ -184,8 +184,8 @@ impl DiceThrow {
 /// they are normalized to the interval.
 #[derive(CreateTypeSpec, SecretBinary)]
 pub struct RandomContribution {
-    d1: Sbi8,
-    d2: Sbi8,
+    d1: Sbu8,
+    d2: Sbu8,
 }
 
 /// The different phases the contract can be in before, during and after a game of Mia.

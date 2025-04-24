@@ -11,18 +11,18 @@ pub struct EntryPoint {
     /// 2 = age 20-39,
     /// 3 = age 40-59,
     /// 4 = age 60+
-    pub age_choice: Sbi8,
+    pub age_choice: Sbu8,
     /// the gender to input. The following values can be inputted:
     /// 1 = Male,
     /// 2 = Female,
     /// 3 = Other
-    pub gender_choice: Sbi8,
+    pub gender_choice: Sbu8,
     /// the color to input. The following values can be inputted:
     /// 1 = Red,
     /// 2 = Blue,
     /// 3 = Green,
     /// 4 = Yellow
-    pub color_choice: Sbi8,
+    pub color_choice: Sbu8,
 }
 
 /// Output data types.
@@ -69,19 +69,19 @@ pub fn compute_statistics() -> StatisticsOutput {
         let input = load_sbi::<EntryPoint>(variable_id);
 
         for idx in 0usize..4usize {
-            if input.age_choice == Sbi8::from((idx + 1usize) as i8) {
+            if input.age_choice == Sbu8::from((idx + 1usize) as u8) {
                 age_count[idx] = age_count[idx] + Sbi32::from(1)
             }
         }
 
         for idx in 0usize..3usize {
-            if input.gender_choice == Sbi8::from((idx + 1usize) as i8) {
+            if input.gender_choice == Sbu8::from((idx + 1usize) as u8) {
                 gender_count[idx] = gender_count[idx] + Sbi32::from(1)
             }
         }
 
         for idx in 0usize..4usize {
-            if input.color_choice == Sbi8::from((idx + 1usize) as i8) {
+            if input.color_choice == Sbu8::from((idx + 1usize) as u8) {
                 color_count[idx] = color_count[idx] + Sbi32::from(1)
             }
         }

@@ -2,7 +2,7 @@
 
 Upgradable example WASM smart contract with hash-based upgrade check.
 
-The [`UpgradableV2State`] contains:
+The `UpgradableV2State` contains:
 
 - The address of the account or contract that is allowed to register hashes for
   upgraded versions of the contract.

@@ -22,8 +22,8 @@ pub enum SecretVarType {
     InputModel {
         /// The fixed-point scaling conversion ensuring precision in value/threshold comparison.
         /// The thresholds in each (feature, threshold) pair are multiplied by the corresponding
-        /// entry, i.e., threshold * scaling[feature].
-        /// The sample values are multiplied elementwise, i.e., sample[i] * scaling[i].
+        /// entry, i.e., threshold * scaling\[feature\].
+        /// The sample values are multiplied elementwise, i.e., sample\[i\] * scaling\[i\].
         scaling: Vec<u16>,
     },
     /// The input sample

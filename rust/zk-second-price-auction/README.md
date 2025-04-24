@@ -1,14 +1,23 @@
-# Zero Knowledge second price auction
+# Zero Knowledge: second price auction
 
-Simple Second Price Auction (also known as a [Vickrey auction](https://en.wikipedia.org/wiki/Vickrey_auction)) Contract.
+Smart contract implementing the simple Second Price Auction (also known as a [Vickrey auction](https://en.wikipedia.org/wiki/Vickrey_auction)).
+
 Second price auctions is a common form of auction, where each party places a bid, and the
 winner is the party who places the highest bid. However, the winner only pays the amount of the
-second highest bid. ZK implementations of such auctions facilities the possibility of such
+second-highest bid. 
+ZK implementations of such auctions facilities the possibility of such
 auctions without revealing the incoming bids - making the auction fair.
 
-One of the great advantages of PBC over other blockchains is that zero knowledge computations can be performed on the network parallel to the public transactions on the blockchain. The second price auction takes as inputs the bids from the registered participants. The bids are delivered encrypted and secret-shared to the ZK nodes allocated to the contract. When the computation is initiated by the contract owner, the zero knowledge computation nodes reads the collected input and then create a bit vector consisting of prices and the ordering number. The list of bit vectors is now sorted in MPC. The winner is the first entry (the bidder with the highest price-bid), the price is determined by the size of the second-highest bid.
+One of the great advantages of PBC over other blockchains is that zero knowledge computations can be performed on the
+network parallel to the public transactions on the blockchain. The second price auction takes as inputs the bids from
+the registered participants. The bids are delivered encrypted and secret-shared to the ZK nodes allocated to the contract.
+When the computation is initiated by the contract owner, the zero knowledge computation nodes reads the collected input
+and then create a bit vector consisting of prices and the ordering number. The list of bit vectors is now sorted in MPC. 
+The winner is the first entry (the bidder with the highest price-bid), 
+the price is determined by the size of the second-highest bid.
 
-This implementation works in the following steps:
+### Usage
+
 1. Initialization on the blockchain.
 2. Receival of secret bids, using zero-knowledge protocols.
 3. Once enough bids have been received, the owner of the contract can initialize the auction.

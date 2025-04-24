@@ -27,3 +27,4 @@ create_type_spec_derive.workspace = true
 pbc_contract_codegen.workspace = true
 k256 = { version = "0.13.4", default-features = false, features = ["ecdsa-core", "ecdsa", "sha2"] }
 hex = "0.4.3"
+matchit = "0.8.6"
