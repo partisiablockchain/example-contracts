@@ -10,7 +10,7 @@ use pbc_contract_common::address::Address;
 use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
-use pbc_zk::Sbi8;
+use pbc_zk::Sbu8;
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
@@ -44,7 +44,7 @@ pub fn add_file(
 ) -> (
     CollectionState,
     Vec<EventGroup>,
-    ZkInputDef<SecretVarMetadata, Vec<Sbi8>>,
+    ZkInputDef<SecretVarMetadata, Vec<Sbu8>>,
 ) {
     let input_def = ZkInputDef::with_metadata_and_size(None, SecretVarMetadata {}, file_length * 8);
     (state, vec![], input_def)

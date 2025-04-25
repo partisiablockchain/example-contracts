@@ -80,7 +80,7 @@ fn evaluate_internal_vertices(
     let mut result: [Sbu1; 7] = [Sbu1::from(false); 7];
 
     for i in 0usize..7usize {
-        let value: Sbi16 = lookup_in_sbi8_array(sample, internal_vertices[i].feature);
+        let value: Sbi16 = lookup_in_array(sample, internal_vertices[i].feature);
 
         if value <= internal_vertices[i].threshold {
             result[i] = Sbu1::from(true);
@@ -152,7 +152,7 @@ fn predict_class(path_evaluation: [Sbu1; 8], leaf_vertices: [LeafVertex; 8]) -> 
 }
 
 /// Performs lookup in an array of Sbi16, using a Sbu8 as index.
-fn lookup_in_sbi8_array(arr: [Sbi16; 10], wanted_index: Sbu8) -> Sbi16 {
+fn lookup_in_array(arr: [Sbi16; 10], wanted_index: Sbu8) -> Sbi16 {
     let mut result: Sbi16 = Sbi16::from(0);
 
     for index in 0u8..10u8 {

@@ -11,7 +11,7 @@ pub struct SecretPosition {
 #[allow(unused)]
 #[derive(pbc_zk::SecretBinary, Clone, CreateTypeSpec)]
 pub struct SecretResponse {
-    age: Sbi8,
+    age: Sbu8,
     height: Sbi16,
     position: SecretPosition,
     wealth: Sbi128,

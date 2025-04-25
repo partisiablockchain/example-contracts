@@ -1,12 +1,12 @@
-# Zero Knowledge voting simple
+# Zero Knowledge: voting simple
 
-ZK voting does the same as the public vote, with a notable exception the votes are anonymous and only the final result is revealed in the public state
+Smart contract for voting in which the votes are anonymous and only the final result is revealed in the public state.
 
-Secret voting is a common Zero-knowledge MPC example, wherein several persons are interested in
+Secret voting is a common Zero knowledge/MPC example, wherein several people are interested in
 voting upon some question, without revealing their personal preference, similar to many
 democratic election processes.
 
-This contract's flow follows as:
+### Usage
 
 1. Initialization of contract with voting information, including owner and vote duration
 2. Voters send their votes. (0 is against, any other value is for).

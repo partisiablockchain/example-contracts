@@ -1,13 +1,14 @@
-# Secure evaluation of decision tree
+# Zero Knowledge: classification
 
-The contract allows secret evaluation of a pre-trained model on a user-provided input sample.
+Smart contract which allows secret evaluation of a pre-trained model on a user-provided input sample.
+
 The pre-trained model is provided by the model owner, while the input owner provides the sample(s) to be classified.
-
 The model is a decision tree classifier comprising internal vertices and leaf vertices.
 Internal vertices consist of a splitting feature and a threshold value, both of which are treated as secrets and secret shared.
 Leaf vertices represent the predicted class resulting from following the path from the root to the given leaf. These classes are also secret shared.
 
-**The flow of the contract is as follows:**
+### Usage 
+
 1. Initialization of contract.
 2. Model and input sample are added.
 3. Each internal vertex is evaluated using oblivious lookup in the input sample. Result is a vector of length m of secret-shared bits, where m is the number of internal vertices.
@@ -40,12 +41,15 @@ according to a pre-order traversal of the tree. E.g.:
 (42, 10, 6000, 0, 37, 0, 1, 0, 1, 1)
 ```
 
-If the provided input value is less than or equal to the threshold for the given feature, the left path is taken. Otherwise, the right path is taken.
+If the provided input value is less than or equal to the threshold for the given feature, 
+the left path is taken. Otherwise, the right path is taken.
 
 
 ### Example of code to train decision tree classifier
 
-The following Python code represents an example of how one can train a decision tree classifier and save the resulting model in a format suitable for a smart contract. This example uses the scikit-learn library to create and train a model and subsequently saves it in JSON format, but many other approaches exist.
+The following Python code represents an example of how one can train a decision tree classifier and save the 
+resulting model in a format suitable for a smart contract. This example uses the scikit-learn library to create
+and train a model and subsequently saves it in JSON format, but many other approaches exist.
 
 ```python
 import pandas as pd
@@ -102,7 +106,9 @@ json.dump(vertices, outfile)
 
 ### Example of code to preprocess dataset
 
-The following Python code represents an example of how one can preprocess a dataset to prepare it for model training. The preprocessing choices made in the code reflect a need to balance computational complexity and accuracy. Many other choices could have been made for equally valid reasons.
+The following Python code represents an example of how one can preprocess a dataset to prepare it for model training.
+The preprocessing choices made in the code reflect a need to balance computational complexity and accuracy. 
+Many other choices could have been made for equally valid reasons.
 
 ```python
 import pandas as pd
