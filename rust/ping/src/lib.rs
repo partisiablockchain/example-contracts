@@ -51,7 +51,7 @@ pub fn ping(
     let mut event_group_builder = EventGroup::builder();
     event_group_builder.ping(destination, cost);
     event_group_builder
-        .with_callback(SHORTNAME_PING_CALLBACK)
+        .with_callback_rpc(ping_callback::rpc())
         .done();
     (state, vec![event_group_builder.build()])
 }

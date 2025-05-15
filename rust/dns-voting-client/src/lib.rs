@@ -68,8 +68,7 @@ pub fn vote(
         .done();
 
     event_group
-        .with_callback(SHORTNAME_VOTE_CALLBACK)
-        .argument(vote)
+        .with_callback_rpc(vote_callback::rpc(vote))
         .with_cost(1000)
         .done();
 

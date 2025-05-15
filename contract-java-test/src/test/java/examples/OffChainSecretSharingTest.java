@@ -13,16 +13,15 @@ import com.partisiablockchain.language.abicodegen.OffChainSecretSharing;
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
+import com.partisiablockchain.language.junit.TestBlockchain;
 import com.partisiablockchain.language.testenvironment.executionengine.TestExecutionEngine;
 import com.secata.stream.SafeDataOutputStream;
 import examples.client.SecretShares;
 import examples.client.SecretSharingClient;
 import java.math.BigInteger;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
 
 /** Test suite for the {@link OffChainSecretSharing} contract. */
@@ -35,11 +34,11 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
           Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing_runner"));
 
   /** Private keys for each of the engines. */
-  private static final List<KeyPair> ENGINE_KEYS =
+  public static final List<KeyPair> ENGINE_KEYS =
       List.of(20L, 21L, 22L, 23L).stream().map(BigInteger::valueOf).map(KeyPair::new).toList();
 
-  /** Addresses of the engines. */
-  private List<BlockchainAddress> engineAddresses;
+  /** Configurations of the engines. */
+  private List<OffChainSecretSharing.NodeConfig> engineConfigs;
 
   /** Engine test objects. */
   private List<TestExecutionEngine> engines;
@@ -71,31 +70,47 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   void setup() {
     sender = blockchain.newAccount(senderKey);
     otherSender = blockchain.newAccount(otherSenderKey);
-    engineAddresses = new ArrayList<>();
-    engines = new ArrayList<>();
+    engines = createEngines(blockchain);
+    engineConfigs = createEngineConfigs(blockchain);
 
-    for (final KeyPair engineKey : ENGINE_KEYS) {
-      engineAddresses.add(blockchain.newAccount(engineKey));
-      engines.add(blockchain.addExecutionEngine(p -> true, engineKey));
-    }
-
-    List<OffChainSecretSharing.NodeConfig> nodeConfigs =
-        IntStream.range(0, engineAddresses.size())
-            .mapToObj(
-                i -> new OffChainSecretSharing.NodeConfig(engineAddresses.get(i), "engine" + i))
-            .toList();
-
-    byte[] initPayload = OffChainSecretSharing.initialize(nodeConfigs);
+    byte[] initPayload = OffChainSecretSharing.initialize(engineConfigs);
     contractAddress = blockchain.deployContract(sender, CONTRACT_BYTES, initPayload);
     contract = new OffChainSecretSharing(getStateClient(), contractAddress);
 
     OffChainSecretSharing.ContractState state = contract.getState();
     assertThat(state.secretSharings().size()).isEqualTo(0);
     for (int i = 0; i < state.nodes().size(); i++) {
-      OffChainSecretSharing.NodeConfig node = state.nodes().get(i);
-      assertThat(node.address()).isEqualTo(engineAddresses.get(i));
-      assertThat(node.endpoint()).isEqualTo("engine" + i);
+      assertThat(state.nodes().get(i)).isEqualTo(engineConfigs.get(i));
     }
+  }
+
+  /**
+   * Create {@link OffChainSecretSharing.NodeConfig} for engines.
+   *
+   * @param blockchain Blockchain to create {@link OffChainSecretSharing.NodeConfig} in.
+   * @return The created {@link OffChainSecretSharing.NodeConfig}.
+   */
+  public static List<OffChainSecretSharing.NodeConfig> createEngineConfigs(
+      TestBlockchain blockchain) {
+    return ENGINE_KEYS.stream()
+        .map(blockchain::newAccount)
+        .map(
+            address ->
+                new OffChainSecretSharing.NodeConfig(
+                    address, "http://%s.example.org".formatted(address.writeAsString())))
+        .toList();
+  }
+
+  /**
+   * Create {@link TestExecutionEngine}.
+   *
+   * @param blockchain Blockchain to create {@link TestExecutionEngine} in.
+   * @return The created {@link TestExecutionEngine}.
+   */
+  public static List<TestExecutionEngine> createEngines(TestBlockchain blockchain) {
+    return ENGINE_KEYS.stream()
+        .map(engineKey -> blockchain.addExecutionEngine(p -> true, engineKey))
+        .toList();
   }
 
   /** A user can register a sharing on the contract. */
@@ -119,7 +134,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "registerSharing")
   void sendShareToEngine() {
     final HttpRequestData requestData =
-        uploadRequest(senderKey, engineAddresses.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
+        uploadRequest(senderKey, engineConfigs.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(201);
 
@@ -136,14 +151,24 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     return response;
   }
 
-  /** With a correct signature the user can download shares from an engine. */
+  /** Shares cannot be downloaded without requesting the download on-chain beforehand. */
   @ContractTest(previous = "sendShareToEngine")
-  void getShareFromEngine() {
+  void cannotDownloadShareWithoutRequest() {
     final HttpRequestData requestData =
-        downloadRequest(senderKey, engineAddresses.get(0), SHARING_ID_1);
-    final HttpResponseData response = makeEngine0Request(requestData);
-    assertThat(response.statusCode()).isEqualTo(200);
-    assertThat(response.body().data()).isEqualTo(SHARES_WITH_NONCE.get(0));
+        downloadRequest(senderKey, engineConfigs.get(0), SHARING_ID_1);
+    HttpResponseData response =
+        engines.get(0).makeHttpRequest(contractAddress, requestData).response();
+    assertFailedDueToDeadline(response);
+  }
+
+  /** Share download cannot be requested before the upload has been confirmed. */
+  @ContractTest(previous = "sendShareToEngine")
+  void cannotRequestDownloadBeforeAllEnginesReceivedTheirShare() {
+    Assertions.assertThatThrownBy(
+            () ->
+                blockchain.sendAction(
+                    sender, contractAddress, OffChainSecretSharing.requestDownload(SHARING_ID_1)))
+        .hasMessageContaining("Shares haven't been uploaded to all nodes yet");
   }
 
   /** The contract can have multiple different sharings for different people. */
@@ -159,12 +184,11 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     assertThat(sharing.nodesWithCompletedUpload()).isEqualTo(List.of(false, false, false, false));
   }
 
-  /** The engines stores the shares for each sharing. */
+  /** User can upload to another separate sharing. */
   @ContractTest(previous = "registerAnotherSharing")
-  void nodeCanStoreMultipleSharings() {
+  void userUploadToAnotherSeparateSharing() {
     final HttpRequestData requestData =
-        uploadRequest(
-            otherSenderKey, engineAddresses.get(0), SHARING_ID_2, SHARES_WITH_NONCE.get(0));
+        uploadRequest(otherSenderKey, engineConfigs.get(0), SHARING_ID_2, SHARES_WITH_NONCE.get(0));
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(201);
 
@@ -176,16 +200,13 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     assertThat(engines.get(0).getStorage(contractAddress).size()).isEqualTo(2);
   }
 
-  /** Multiple nodes can have different shares store for a specific sharing. */
+  /** Nodes has different shares for each sharing. */
   @ContractTest(previous = "registerSharing")
   void eachNodeStoresItsOwnSharing() {
     for (int nodeIdx = 0; nodeIdx < engines.size(); nodeIdx++) {
       final HttpRequestData requestData =
           uploadRequest(
-              senderKey,
-              engineAddresses.get(nodeIdx),
-              SHARING_ID_1,
-              SHARES_WITH_NONCE.get(nodeIdx));
+              senderKey, engineConfigs.get(nodeIdx), SHARING_ID_1, SHARES_WITH_NONCE.get(nodeIdx));
       final HttpResponseData response =
           engines.get(nodeIdx).makeHttpRequest(contractAddress, requestData).response();
       assertThat(response.statusCode()).isEqualTo(201);
@@ -194,38 +215,71 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     OffChainSecretSharing.ContractState state = contract.getState();
     assertThat(state.secretSharings().get(SHARING_ID_1).nodesWithCompletedUpload())
         .isEqualTo(List.of(true, true, true, true));
+  }
 
+  /** Users can request the download of their owned secret shares. */
+  @ContractTest(previous = "eachNodeStoresItsOwnSharing")
+  void requestShareDownload() {
+    blockchain.sendAction(
+        sender, contractAddress, OffChainSecretSharing.requestDownload(SHARING_ID_1));
+
+    assertThat(contract.getState().secretSharings().get(SHARING_ID_1).downloadDeadline())
+        .isEqualTo(300014L);
+    assertThat(blockchain.getBlockProductionTime()).isEqualTo(15);
+  }
+
+  /** Users can download secret shares after requesting the download. */
+  @ContractTest(previous = "requestShareDownload")
+  void usersDownloadAllSharesForSharing() {
     for (int nodeIdx = 0; nodeIdx < engines.size(); nodeIdx++) {
-      HttpRequestData getSharesRequest =
-          downloadRequest(senderKey, engineAddresses.get(nodeIdx), SHARING_ID_1);
-      HttpResponseData response =
+      final HttpRequestData getSharesRequest =
+          downloadRequest(senderKey, engineConfigs.get(nodeIdx), SHARING_ID_1);
+      final HttpResponseData response =
           engines.get(nodeIdx).makeHttpRequest(contractAddress, getSharesRequest).response();
+      assertThat(response.statusCode()).isEqualTo(200);
       assertThat(response.body().data()).isEqualTo(SHARES_WITH_NONCE.get(nodeIdx));
     }
+  }
+
+  /** Users cannot download their secret shares after the deadline has passed. */
+  @ContractTest(previous = "requestShareDownload")
+  void usersCannotDownloadTheirSecretSharesAfterDeadlineHasPassed() {
+    blockchain.waitForBlockProductionTime(300015L);
+    final HttpRequestData getSharesRequest =
+        downloadRequest(senderKey, engineConfigs.get(0), SHARING_ID_1);
+
+    final HttpResponseData response =
+        engines.get(0).makeHttpRequest(contractAddress, getSharesRequest).response();
+    assertFailedDueToDeadline(response);
+  }
+
+  private void assertFailedDueToDeadline(final HttpResponseData response) {
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.bodyAsText())
+        .isEqualTo(
+            "{ \"error\": \"Download not requested, or download deadline has been passed\" }");
   }
 
   /** The engine fails with 400 if trying to upload shares multiple times for single sharing. */
   @ContractTest(previous = "sendShareToEngine")
   void sharesAlreadyStored() {
     final HttpRequestData requestData =
-        uploadRequest(senderKey, engineAddresses.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
+        uploadRequest(senderKey, engineConfigs.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(409);
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Already stored\" }");
   }
 
-  /**
-   * The engine fails with 404 if trying to get shares from a node before it has been uploaded to
-   * it.
-   */
+  /** The engine fails when getting share before it has been uploaded. */
   @ContractTest(previous = "registerSharing")
-  void getNotStored() {
+  void engineFailsWhenGettingShareBeforeHasBeenUploaded() {
     final HttpRequestData requestData =
-        downloadRequest(senderKey, engineAddresses.get(0), SHARING_ID_1);
+        downloadRequest(senderKey, engineConfigs.get(0), SHARING_ID_1);
     final HttpResponseData response = makeEngine0Request(requestData);
-    assertThat(response.statusCode()).isEqualTo(404);
+    assertThat(response.statusCode()).isEqualTo(400);
     assertThat(response.bodyAsText())
-        .isEqualTo("{ \"error\": \"Sharing haven't been stored yet\" }");
+        .isEqualTo(
+            "{ \"error\": \"Download not requested, or download deadline has been passed\" }");
   }
 
   /**
@@ -235,7 +289,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "registerSharing")
   void unknownSharing() {
     final HttpRequestData requestData =
-        uploadRequest(senderKey, engineAddresses.get(0), SHARING_ID_2, SHARES_WITH_NONCE.get(0));
+        uploadRequest(senderKey, engineConfigs.get(0), SHARING_ID_2, SHARES_WITH_NONCE.get(0));
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(404);
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unknown sharing\" }");
@@ -247,8 +301,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "registerSharing")
   void wrongAuthorizationPut() {
     final HttpRequestData requestData =
-        uploadRequest(
-            otherSenderKey, engineAddresses.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
+        uploadRequest(otherSenderKey, engineConfigs.get(0), SHARING_ID_1, SHARES_WITH_NONCE.get(0));
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(401);
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unauthorized\" }");
@@ -261,7 +314,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "sendShareToEngine")
   void wrongAuthorizationGet() {
     final HttpRequestData requestData =
-        downloadRequest(otherSenderKey, engineAddresses.get(0), SHARING_ID_1);
+        downloadRequest(otherSenderKey, engineConfigs.get(0), SHARING_ID_1);
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(401);
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unauthorized\" }");
@@ -271,7 +324,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "sendShareToEngine")
   void wrongNodeSignature() {
     final HttpRequestData requestData =
-        downloadRequest(otherSenderKey, engineAddresses.get(3), SHARING_ID_1);
+        downloadRequest(otherSenderKey, engineConfigs.get(3), SHARING_ID_1);
     final HttpResponseData response = makeEngine0Request(requestData);
     assertThat(response.statusCode()).isEqualTo(401);
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unauthorized\" }");
@@ -345,7 +398,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Malformed request\" }");
   }
 
-  /** You cannot use the same sharing id multiple times when registering shares. */
+  /** Secret sharing ids must be unique. */
   @ContractTest(previous = "registerSharing")
   void registerSharingTwice() {
     byte[] payload = OffChainSecretSharing.registerSharing(SHARING_ID_1, SHARE_COMMITMENTS);
@@ -378,7 +431,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     final HttpRequestData requestData =
         uploadRequest(
             senderKey,
-            engineAddresses.get(0),
+            engineConfigs.get(0),
             SHARING_ID_1,
             nonceAndData((byte) 9, new byte[] {1, 2, 3}));
     final HttpResponseData response = makeEngine0Request(requestData);
@@ -404,14 +457,14 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
    * Create a signed share upload request.
    *
    * @param senderKey Key used to sign request. Not nullable.
-   * @param engineAddress Address of the engine that request is sent to. Not nullable.
+   * @param engineConfig Configuration of the engine that request is sent to. Not nullable.
    * @param secretSharingId Identifier of the secret sharing. Not nullable.
    * @param share Share to upload. Not nullable.
    * @return Signed request. Not nullable.
    */
   private HttpRequestData uploadRequest(
       KeyPair senderKey,
-      BlockchainAddress engineAddress,
+      OffChainSecretSharing.NodeConfig engineConfig,
       BigInteger secretSharingId,
       byte[] share) {
     assertThat(share).as("Share must have nonce").hasSizeGreaterThan(32);
@@ -419,7 +472,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
     final String method = "PUT";
     final Signature signature =
         SecretSharingClient.createSignatureForOffChainHttpRequest(
-            senderKey, engineAddress, contractAddress, method, secretSharingId, share);
+            senderKey, engineConfig.address(), contractAddress, method, secretSharingId, share);
 
     final Map<String, List<String>> headers =
         Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString()));
@@ -431,16 +484,23 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
    * Create a signed share download request.
    *
    * @param senderKey Key used to sign request. Not nullable.
-   * @param engineAddress Address of the engine that request is sent to. Not nullable.
+   * @param engineConfig Configuration of the engine that request is sent to. Not nullable.
    * @param secretSharingId Identifier of the secret sharing. Not nullable.
    * @return Signed request. Not nullable.
    */
   private HttpRequestData downloadRequest(
-      KeyPair senderKey, BlockchainAddress engineAddress, BigInteger secretSharingId) {
+      KeyPair senderKey,
+      OffChainSecretSharing.NodeConfig engineConfig,
+      BigInteger secretSharingId) {
     final String method = "GET";
     final Signature signature =
         SecretSharingClient.createSignatureForOffChainHttpRequest(
-            senderKey, engineAddress, contractAddress, method, secretSharingId, new byte[0]);
+            senderKey,
+            engineConfig.address(),
+            contractAddress,
+            method,
+            secretSharingId,
+            new byte[0]);
 
     final Map<String, List<String>> headers =
         Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString()));

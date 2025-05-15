@@ -11,13 +11,13 @@ use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::sorted_vec_map::SortedVecMap;
 use pbc_traits::WriteRPC;
 
-const PUB_DEPLOY_ADDRESS: Address = Address {
-    address_type: AddressType::SystemContract,
-    identifier: [
+const PUB_DEPLOY_ADDRESS: Address = Address::from_components(
+    AddressType::SystemContract,
+    [
         0x97, 0xa0, 0xe2, 0x38, 0xe9, 0x24, 0x02, 0x5b, 0xad, 0x14, 0x4a, 0xa0, 0xc4, 0x91, 0x3e,
         0x46, 0x30, 0x8f, 0x9a, 0x4d,
     ],
-};
+);
 
 /// Contract state.
 ///
@@ -56,18 +56,16 @@ pub fn initialize(
     voting_contract_wasm: Vec<u8>,
     voting_contract_abi: Vec<u8>,
     binder_id: i32,
-) -> (MultiVotingState, Vec<EventGroup>) {
+) -> MultiVotingState {
     let eligible_voters = vec![ctx.sender];
-    let state = MultiVotingState {
+    MultiVotingState {
         owner: ctx.sender,
         eligible_voters,
         voting_contracts: SortedVecMap::new(),
         voting_contract_wasm,
         voting_contract_abi,
         binder_id,
-    };
-
-    (state, vec![])
+    }
 }
 
 /// Adds a voter to eligible voters. This voter can then vote on voting contracts. Only the
@@ -86,14 +84,14 @@ pub fn add_voter(
     ctx: ContractContext,
     mut state: MultiVotingState,
     voter: Address,
-) -> (MultiVotingState, Vec<EventGroup>) {
+) -> MultiVotingState {
     assert_eq!(ctx.sender, state.owner, "Only owner can add voters");
     let voter_exists = state.eligible_voters.iter().any(|x| *x == voter);
     if voter_exists {
         panic!("Voter already exists");
     }
     state.eligible_voters.push(voter);
-    (state, vec![])
+    state
 }
 
 /// Removes a voter from eligible voters. This voter can no longer vote on voting contracts.
@@ -112,7 +110,7 @@ pub fn remove_voter(
     ctx: ContractContext,
     mut state: MultiVotingState,
     voter: Address,
-) -> (MultiVotingState, Vec<EventGroup>) {
+) -> MultiVotingState {
     assert_eq!(ctx.sender, state.owner, "Only owner can remove voters");
     let index = state
         .eligible_voters
@@ -120,7 +118,7 @@ pub fn remove_voter(
         .position(|x| *x == voter)
         .expect("Voter does not exist");
     state.eligible_voters.remove(index);
-    (state, vec![])
+    state
 }
 
 /// Deploys a new voting contract with given proposal id. The voting contract is deployed with
@@ -152,10 +150,12 @@ pub fn add_voting_contract(
 
     state.voting_contracts.insert(p_id, None);
 
-    let voting_address = Address {
-        address_type: AddressType::PublicContract,
-        identifier: ctx.original_transaction.bytes[12..32].try_into().unwrap(),
-    };
+    let voting_address = Address::from_components(
+        AddressType::PublicContract,
+        ctx.original_transaction.as_ref()[12..32]
+            .try_into()
+            .unwrap(),
+    );
 
     let mut event_group = EventGroup::builder();
 
@@ -172,10 +172,8 @@ pub fn add_voting_contract(
         .done();
 
     event_group
-        .with_callback(SHORTNAME_ADD_VOTING_CONTRACT_CALLBACK)
+        .with_callback_rpc(add_voting_contract_callback::rpc(p_id, voting_address))
         .with_cost(1000)
-        .argument(p_id)
-        .argument(voting_address)
         .done();
 
     (state, vec![event_group.build()])
@@ -212,9 +210,7 @@ pub fn add_voting_contract_callback(
 
         event_group.ping(voting_address, None);
         event_group
-            .with_callback(SHORTNAME_VOTING_CONTRACT_EXISTS_CALLBACK)
-            .argument(p_id)
-            .argument(voting_address)
+            .with_callback_rpc(voting_contract_exists_callback::rpc(p_id, voting_address))
             .done();
 
         (state, vec![event_group.build()])
@@ -241,13 +237,13 @@ pub fn voting_contract_exists_callback(
     mut state: MultiVotingState,
     p_id: u64,
     voting_address: Address,
-) -> (MultiVotingState, Vec<EventGroup>) {
+) -> MultiVotingState {
     if !callback_ctx.results[0].succeeded {
         state.voting_contracts.remove(&p_id);
     } else {
         state.voting_contracts.insert(p_id, Some(voting_address));
     }
-    (state, vec![])
+    state
 }
 
 fn create_voting_init_bytes(proposal_id: u64, voters: &Vec<Address>, deadline: i64) -> Vec<u8> {

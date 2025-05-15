@@ -135,7 +135,7 @@ fn compute_statistics(
         state,
         vec![],
         vec![zk_compute::compute_statistics_start(
-            Some(SHORTNAME_COMPUTATION_COMPLETE),
+            Some(computation_complete::SHORTNAME),
             &PublicInfoForResult {},
         )],
     )

@@ -91,7 +91,7 @@ pub fn add_model(
     );
 
     let input_def = ZkInputDef::with_metadata(
-        Some(SHORTNAME_INPUTTED_MODEL),
+        Some(inputted_model::SHORTNAME),
         SecretVarType::InputModel {
             scaling: scaling_conversion,
         },
@@ -134,7 +134,7 @@ pub fn add_input_sample(
     ZkInputDef<SecretVarType, zk_compute::Sample>,
 ) {
     let input_def = ZkInputDef::with_metadata(
-        Some(SHORTNAME_INPUTTED_SAMPLE),
+        Some(inputted_sample::SHORTNAME),
         SecretVarType::InputSample {
             model_id,
             result_receiver,
@@ -166,7 +166,7 @@ fn inputted_sample(
             vec![zk_compute::evaluate_start(
                 model_id,
                 inputted_sample_id,
-                Some(SHORTNAME_COMPUTE_COMPLETE),
+                Some(compute_complete::SHORTNAME),
                 &SecretVarType::InferenceResult {
                     result_owner: result_receiver,
                 },
