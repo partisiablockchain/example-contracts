@@ -86,6 +86,9 @@ The **ZK (Multi-Party Computation)** contracts are:
 The **Off-Chain** contracts are:
 
 - [`off-chain-secret-sharing`](./rust/off-chain-secret-sharing): Contract that allows user to store secret shares, distributed between a set of nodes.
+- [`off-chain-publish-randomness`](./rust/off-chain-publish-randomness):
+  Contract that automatically provides random bytes to the blockchain, created
+  through a distributed process.
 
 The three **Upgradable** contracts are examples for the upgrade process of smart
 contracts:

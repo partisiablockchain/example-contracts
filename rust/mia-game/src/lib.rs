@@ -318,7 +318,7 @@ pub fn add_randomness_to_throw(
     );
 
     let input_def = ZkInputDef::with_metadata(
-        Some(SHORTNAME_INPUTTED_VARIABLE),
+        Some(inputted_variable::SHORTNAME),
         SecretVarType::Randomness {},
     );
 
@@ -367,7 +367,7 @@ pub fn throw_dice(
         state,
         vec![],
         vec![zk_compute::compute_dice_throw_start(
-            Some(SHORTNAME_SUM_COMPUTE_COMPLETE),
+            Some(sum_compute_complete::SHORTNAME),
             &SecretVarType::ThrowResult {},
         )],
     )

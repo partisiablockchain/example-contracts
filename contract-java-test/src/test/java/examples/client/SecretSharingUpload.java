@@ -45,7 +45,7 @@ public final class SecretSharingUpload {
    */
   static SecretSharingClient<XorSecretShares> secretSharingClient(
       BlockchainAddress contractAddress) {
-    return new SecretSharingClient<XorSecretShares>(
+    return SecretSharingClient.create(
         READER_NODE_ENDPOINT, contractAddress, SENDER_KEY, XorSecretShares.FACTORY);
   }
 }

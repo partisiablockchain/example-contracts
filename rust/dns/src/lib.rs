@@ -135,10 +135,10 @@ pub fn lookup(
 
     assert!(entry.is_some(), "No address found with the given domain");
 
-    let mut event_builder = EventGroup::builder();
-    event_builder.return_data(entry.unwrap().address);
-
-    (state, vec![event_builder.build()])
+    (
+        state,
+        vec![EventGroup::with_return_data(entry.unwrap().address)],
+    )
 }
 
 /// Remove a domain from the register.

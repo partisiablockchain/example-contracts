@@ -12,14 +12,14 @@ use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::events::EventGroup;
 use pbc_contract_common::zk::{SecretVarId, ZkInputDef, ZkState, ZkStateChange};
 use pbc_traits::ReadWriteState;
-use read_write_rpc_derive::{ReadRPC, ReadWriteRPC};
+use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
 #[derive(ReadWriteState, ReadWriteRPC, Debug)]
 struct SecretVarMetadata {}
 
 /// Public version of the Position struct used in the secret input struct
-#[derive(ReadWriteState, CreateTypeSpec, ReadRPC, Clone)]
+#[derive(ReadWriteState, CreateTypeSpec, ReadWriteRPC, Clone)]
 #[repr(C)]
 pub struct Position {
     /// x position
@@ -29,7 +29,7 @@ pub struct Position {
 }
 
 /// Public version of the secret input struct
-#[derive(ReadWriteState, CreateTypeSpec, ReadRPC, Clone)]
+#[derive(ReadWriteState, CreateTypeSpec, ReadWriteRPC, Clone)]
 #[repr(C)]
 pub struct Response {
     /// Age
@@ -112,7 +112,7 @@ fn secret_input(
     ZkInputDef<SecretVarMetadata, SecretResponse>,
 ) {
     let input_def =
-        ZkInputDef::with_metadata(Some(SHORTNAME_OUTPUT_VARIABLES), SecretVarMetadata {});
+        ZkInputDef::with_metadata(Some(output_variables::SHORTNAME), SecretVarMetadata {});
 
     (state, vec![], input_def)
 }
@@ -130,7 +130,7 @@ fn output_variables(
         vec![],
         vec![zk_compute::open_but_first_add_300_start(
             variable_id,
-            Some(SHORTNAME_COMPUTATION_COMPLETE),
+            Some(computation_complete::SHORTNAME),
             &SecretVarMetadata {},
         )],
     )

@@ -74,7 +74,7 @@ fn add_salary(
         context.sender
     );
     let input_def =
-        ZkInputDef::with_metadata(Some(SHORTNAME_INPUTTED_VARIABLE), SecretVarType::Salary {});
+        ZkInputDef::with_metadata(Some(inputted_variable::SHORTNAME), SecretVarType::Salary {});
     (state, vec![], input_def)
 }
 
@@ -119,7 +119,7 @@ fn compute_average_salary(
         state,
         vec![],
         vec![zk_compute::sum_everything_start(
-            Some(SHORTNAME_SUM_COMPUTE_COMPLETE),
+            Some(sum_compute_complete::SHORTNAME),
             &SecretVarType::SumResult {},
         )],
     )

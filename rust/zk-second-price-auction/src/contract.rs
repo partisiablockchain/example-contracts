@@ -156,10 +156,7 @@ pub fn receive_registered_bidder_event(
         i32::from_be_bytes(event_data.as_slice()[28..32].try_into().unwrap());
     let mut pbc_address_buffer: [u8; 20] = [0; 20];
     pbc_address_buffer.clone_from_slice(&event_data[33..53]);
-    let pbc_account = Address {
-        address_type: Account,
-        identifier: pbc_address_buffer,
-    };
+    let pbc_account = Address::from_components(Account, pbc_address_buffer);
 
     assert!(
         !state.registered_bidders.contains_key(&pbc_account),
@@ -256,7 +253,7 @@ fn start_auction(
         state,
         vec![],
         vec![zk_compute::run_auction_start(
-            Some(SHORTNAME_CLOSE_AUCTION),
+            Some(close_auction::SHORTNAME),
             [&NOT_A_BID, &NOT_A_BID],
         )],
     )

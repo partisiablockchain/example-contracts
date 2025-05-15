@@ -1,10 +1,8 @@
 #![doc = include_str!("../README.md")]
-#![allow(unused_variables)]
 // Allow for the warning in the README.
 #![allow(rustdoc::broken_intra_doc_links)]
 
 mod http_router;
-mod signatures;
 
 #[macro_use]
 extern crate pbc_contract_codegen;
@@ -12,7 +10,6 @@ extern crate pbc_contract_common;
 
 use crate::http_router::HttpMethod::{Get, Put};
 use crate::http_router::HttpRouter;
-use crate::signatures::{create_address, recover_public_key};
 use create_type_spec_derive::CreateTypeSpec;
 use matchit::Params;
 use pbc_contract_common::address::Address;
@@ -21,11 +18,13 @@ use pbc_contract_common::context::ContractContext;
 use pbc_contract_common::off_chain::{
     HttpRequestData, HttpResponseData, OffChainContext, OffChainStorage,
 };
+use pbc_contract_common::signature::Signature;
 use pbc_contract_common::Hash;
 use pbc_traits::WriteRPC;
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 use std::io::{Read, Write};
+use std::time::SystemTime;
 
 /// Node configuration
 #[derive(ReadWriteState, ReadWriteRPC, CreateTypeSpec, Debug)]
@@ -42,16 +41,24 @@ type SharingId = u128;
 /// Identifier of an engine.
 type NodeIndex = usize;
 
-/// Active secret sharing
+type TimestampMsSinceUnix = i64;
+
+/// Active secret sharing.
 #[derive(ReadWriteState, ReadWriteRPC, CreateTypeSpec, Debug)]
 struct Sharing {
     /// Owner of the secret sharing.
+    ///
+    /// Is the only user allowed to upload and download shares.
     owner: Address,
     /// SHA256 Commitment to specific shares per engine. Prevents an engine from corrupting the
     /// share without the receipient's knowledge.
     share_commitments: Vec<Hash>,
     /// Which nodes that have indicated completion of upload.
     nodes_with_completed_upload: Vec<bool>,
+    /// The deadline before where the owner is able to download their secret shares.
+    ///
+    /// Nodes will respond with an error instead when the deadline is passed.
+    download_deadline: TimestampMsSinceUnix,
 }
 
 /// Individual secret-share; one part of a [`Sharing`].
@@ -76,7 +83,7 @@ impl SecretShare {
     /// Get [`Hash`] of the [`SecretShare`]. This includes both the actual secret-sharing data, and
     /// the nonce.
     fn hash(&self) -> Hash {
-        Hash::digest(&self.write_to_vec())
+        Hash::digest(self.write_to_vec())
     }
 
     /// Serialize [`SecretShare`] to a vec.
@@ -130,18 +137,19 @@ impl Sharing {
         let Some(header) = request.get_header_value("Authorization") else {
             return false;
         };
-        let Some(token) = header.strip_prefix("secp256k1 ") else {
+        let Some(signature) = header
+            .strip_prefix("secp256k1 ")
+            .and_then(Signature::from_hex)
+        else {
             return false;
         };
         let message: Vec<u8> = create_signature_message(request, off_chain_context);
 
-        let Some(public_key) = recover_public_key(&message, token) else {
+        let Some(public_key) = signature.recover_public_key(&message) else {
             return false;
         };
 
-        let recovered_address = create_address(&public_key);
-
-        recovered_address == self.owner
+        public_key.address() == self.owner
     }
 
     /// Asserts that the http request is authenticated for this sharing.
@@ -157,6 +165,28 @@ impl Sharing {
             401,
             JSON_RESPONSE_UNAUTHORIZED,
         )
+    }
+
+    /// Asserts that the download deadline has not been passed
+    ///
+    /// Returns 400 Error if the deadline has been passed
+    fn assert_download_deadline_not_passed(
+        &self,
+        off_chain_context: &OffChainContext,
+    ) -> Result<(), HttpResponseData> {
+        let current_time = off_chain_context
+            .current_time()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0) as TimestampMsSinceUnix;
+        if current_time <= self.download_deadline {
+            Ok(())
+        } else {
+            Err(HttpResponseData::new_with_str(
+                400,
+                JSON_RESPONSE_DEADLINE_PASSED,
+            ))
+        }
     }
 }
 
@@ -265,6 +295,7 @@ pub fn register_sharing(
         sharing_id,
         Sharing {
             owner: ctx.sender,
+            download_deadline: 0,
             share_commitments,
             nodes_with_completed_upload,
         },
@@ -299,6 +330,42 @@ pub fn register_shared(
     state
 }
 
+const DOWNLOAD_PERIOD_DURATION_MS: TimestampMsSinceUnix = 5 * 60 * 1000; // 5 minutes
+
+/// Register that the owner of a secret-sharing wishes to download it.
+///
+/// ## RPC Arguments
+///
+/// - `sharing_id`: Identifier of the sharing.
+#[action(shortname = 0x03)]
+pub fn request_download(
+    ctx: ContractContext,
+    mut state: ContractState,
+    sharing_id: SharingId,
+) -> ContractState {
+    let mut sharing = state
+        .secret_sharings
+        .get(&sharing_id)
+        .expect("No such sharing");
+    assert_eq!(
+        ctx.sender, sharing.owner,
+        "Caller is not the owner of the sharing"
+    );
+    assert_eq!(
+        sharing
+            .nodes_with_completed_upload
+            .iter()
+            .filter(|x| **x)
+            .count(),
+        state.nodes.len(),
+        "Shares haven't been uploaded to all nodes yet"
+    );
+
+    sharing.download_deadline = ctx.block_production_time + DOWNLOAD_PERIOD_DURATION_MS;
+    state.secret_sharings.insert(sharing_id, sharing);
+    state
+}
+
 const BUCKET_KEY_SHARES: [u8; 6] = *b"SHARES";
 
 const JSON_RESPONSE_UNKNOWN_URL: &str = "{ \"error\": \"Invalid URL\" }";
@@ -307,7 +374,8 @@ const JSON_RESPONSE_UNKNOWN_METHOD: &str = "{ \"error\": \"Invalid method\" }";
 const JSON_RESPONSE_UNKNOWN_SHARING: &str = "{ \"error\": \"Unknown sharing\" }";
 const JSON_RESPONSE_UNAUTHORIZED: &str = "{ \"error\": \"Unauthorized\" }";
 const JSON_RESPONSE_ALREADY_STORED: &str = "{ \"error\": \"Already stored\" }";
-const JSON_RESPONSE_NOT_STORED: &str = "{ \"error\": \"Sharing haven't been stored yet\" }";
+const JSON_RESPONSE_DEADLINE_PASSED: &str =
+    "{ \"error\": \"Download not requested, or download deadline has been passed\" }";
 const JSON_RESPONSE_COMMITMENT_MISMATCH: &str =
     "{ \"error\": \"User uploaded data doesn't match commitment\" }";
 
@@ -332,7 +400,7 @@ const JSON_RESPONSE_COMMITMENT_MISMATCH: &str =
 ///
 /// Returns: Status code
 ///
-/// Upload new sharing to the given id.
+/// Upload new sharing to the given id. Requires the user to be the owner of the variable.
 ///
 /// ### Download Share
 ///
@@ -344,7 +412,8 @@ const JSON_RESPONSE_COMMITMENT_MISMATCH: &str =
 ///
 /// Returns: Status code
 ///
-/// Download an existing sharing with the given id.
+/// Download an existing sharing with the given id. Requires the user to be the owner of the
+/// variable, and to have requested permission by calling [`request_download`].
 #[off_chain_on_http_request]
 pub fn http_dispatch(
     ctx: OffChainContext,
@@ -359,7 +428,7 @@ pub fn http_dispatch(
     result.unwrap_or_else(|err| err)
 }
 
-/// Upload new sharing to the given id.
+/// Upload new sharing to the given id. Requires the user to be the owner of the variable.
 ///
 /// Path: `PUT /shares/<ID>`
 ///
@@ -402,18 +471,12 @@ fn http_sharing_put(
     )?;
 
     storage.insert(sharing_id, secret_share);
-    ctx.send_transaction_to_contract(
-        {
-            let mut payload = vec![0x02];
-            sharing_id.rpc_write_to(&mut payload).unwrap();
-            payload
-        },
-        1200,
-    );
+    ctx.send_transaction_to_contract(register_shared::rpc(sharing_id), 1200);
     Ok(HttpResponseData::new_with_str(201, ""))
 }
 
-/// Download an existing sharing with the given id.
+/// Download an existing sharing with the given id. Requires the user to be the owner of the
+/// variable, and to have requested permission by calling [`request_download`].
 ///
 /// Path: `GET /shares/<ID>`
 ///
@@ -431,16 +494,12 @@ fn http_sharing_get(
     let sharing_id = parse_sharing_id(params)?;
     let sharing = state.get_sharing(sharing_id)?;
     sharing.assert_is_authenticated(&request, &ctx)?;
+    sharing.assert_download_deadline_not_passed(&ctx)?;
 
-    let existing_data: Option<SecretShare> = secret_share_storage(&mut ctx).get(&sharing_id);
-    if let Some(data) = existing_data {
-        Ok(HttpResponseData::new(200, data.write_to_vec()))
-    } else {
-        Err(HttpResponseData::new_with_str(
-            404,
-            JSON_RESPONSE_NOT_STORED,
-        ))
-    }
+    let existing_data: SecretShare = secret_share_storage(&mut ctx)
+        .get(&sharing_id)
+        .expect("Data exists");
+    Ok(HttpResponseData::new(200, existing_data.write_to_vec()))
 }
 
 fn secret_share_storage(ctx: &mut OffChainContext) -> OffChainStorage<SharingId, SecretShare> {

@@ -70,7 +70,7 @@ fn secret_input(
     ZkInputDef<SecretVarMetadata, Sbi32>,
 ) {
     let input_def =
-        ZkInputDef::with_metadata(Some(SHORTNAME_OUTPUT_VARIABLES), SecretVarMetadata {});
+        ZkInputDef::with_metadata(Some(output_variables::SHORTNAME), SecretVarMetadata {});
 
     (state, vec![], input_def)
 }
@@ -88,7 +88,7 @@ fn output_variables(
         vec![],
         vec![zk_compute::identity_start(
             variable_id,
-            Some(SHORTNAME_COMPUTATION_COMPLETE),
+            Some(computation_complete::SHORTNAME),
             &SecretVarMetadata {},
         )],
     )

@@ -47,7 +47,7 @@ pub fn add_variable(
     Vec<EventGroup>,
     ZkInputDef<SecretVarType, Sbi32>,
 ) {
-    let input_def = ZkInputDef::with_metadata(Some(SHORTNAME_INPUTTED_VARIABLE), SecretVarType {});
+    let input_def = ZkInputDef::with_metadata(Some(inputted_variable::SHORTNAME), SecretVarType {});
     (state, vec![], input_def)
 }
 
@@ -66,7 +66,7 @@ fn inputted_variable(
         vec![],
         vec![zk_compute::identity_sbi32_start(
             inputted_variable,
-            Some(SHORTNAME_SUM_COMPUTE_COMPLETE),
+            Some(sum_compute_complete::SHORTNAME),
             &SecretVarType {},
         )],
     )
@@ -83,7 +83,7 @@ pub fn produce_4(
         state,
         vec![],
         vec![zk_compute::produce_4_start(
-            Some(SHORTNAME_SUM_COMPUTE_COMPLETE),
+            Some(sum_compute_complete::SHORTNAME),
             &SecretVarType {},
         )],
     )

@@ -102,6 +102,17 @@ identity both on-chain and off-chain. Users and clients only need to keep track
 of a single secret-key to be able to sign both on-chain transactions, and
 off-chain HTTP requests.
 
+### Auditable Downloads
+
+User must authenticate with the smart contract before they are allowed to
+download their shares from the engines. This improves auditability, and allows
+auditors to create a full trace of when the secret sharing was created and
+accessed.
+
+> [!tip]
+> This functionality can be disabled by removing the
+> `assert_download_deadline_not_passed` function.
+
 ### Signature
 
 The signature is computed by hashing and signing a message of the following
