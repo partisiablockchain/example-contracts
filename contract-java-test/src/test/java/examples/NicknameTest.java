@@ -30,68 +30,68 @@ public final class NicknameTest extends JunitContractTest {
     nicknameAddress = blockchain.deployContract(account, CONTRACT_BYTES, initRpc);
     nicknameContract = new Nickname(getStateClient(), nicknameAddress);
 
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
-    String nick = "My nickname";
+    String nickname = "My nickname";
 
-    byte[] rpc = Nickname.giveNickname(key, nick);
+    byte[] rpc = Nickname.giveNickname(address, nickname);
     blockchain.sendAction(account, nicknameAddress, rpc);
 
     Nickname.ContractState state = nicknameContract.getState();
-    assertThat(state.map().treeId()).isEqualTo(0);
-    assertThat(state.map().get(key)).isEqualTo(nick);
+    assertThat(state.nicknames().treeId()).isEqualTo(0);
+    assertThat(state.nicknames().get(address)).isEqualTo(nickname);
   }
 
   /** Can give a nickname to an address. */
   @ContractTest(previous = "setup")
   void giveNickname() {
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000002");
-    String nick = "abc";
-    byte[] rpc = Nickname.giveNickname(key, nick);
+    String nickname = "abc";
+    byte[] rpc = Nickname.giveNickname(address, nickname);
     blockchain.sendAction(account, nicknameAddress, rpc);
 
     Nickname.ContractState state = nicknameContract.getState();
-    assertThat(state.map().get(key)).isEqualTo(nick);
+    assertThat(state.nicknames().get(address)).isEqualTo(nickname);
   }
 
   /** Can overwrite an existing nickname with a new nickname. */
   @ContractTest(previous = "setup")
   void overwriteNickname() {
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
-    String nick = "new nickname";
-    byte[] rpc = Nickname.giveNickname(key, nick);
+    String nickname = "new nickname";
+    byte[] rpc = Nickname.giveNickname(address, nickname);
     blockchain.sendAction(account, nicknameAddress, rpc);
 
     Nickname.ContractState state = nicknameContract.getState();
-    assertThat(state.map().get(key)).isEqualTo(nick);
+    assertThat(state.nicknames().get(address)).isEqualTo(nickname);
   }
 
   /** Can remove a nickname from an address. */
   @ContractTest(previous = "setup")
   void removeNickname() {
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000001");
-    byte[] rpc = Nickname.removeNickname(key);
+    byte[] rpc = Nickname.removeNickname(address);
     blockchain.sendAction(account, nicknameAddress, rpc);
 
     Nickname.ContractState state = nicknameContract.getState();
-    assertThat(state.map().getNextN(null, 10).size()).isEqualTo(0);
+    assertThat(state.nicknames().getNextN(null, 10).size()).isEqualTo(0);
   }
 
   /** Removing nonexistent nickname has no effect. */
   @ContractTest(previous = "setup")
   void removeNonexistentNickname() {
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000042");
-    byte[] rpc = Nickname.removeNickname(key);
+    byte[] rpc = Nickname.removeNickname(address);
     blockchain.sendAction(account, nicknameAddress, rpc);
 
     Nickname.ContractState state = nicknameContract.getState();
     assertThat(
             state
-                .map()
+                .nicknames()
                 .get(BlockchainAddress.fromString("000000000000000000000000000000000000000001")))
         .isEqualTo("My nickname");
   }
@@ -99,31 +99,31 @@ public final class NicknameTest extends JunitContractTest {
   /** A failing transaction doesn't update the nicknames. */
   @ContractTest(previous = "setup")
   void failingTransaction() {
-    BlockchainAddress key =
+    BlockchainAddress address =
         BlockchainAddress.fromString("000000000000000000000000000000000000000002");
-    String nick = "abc";
-    byte[] rpc = Nickname.giveNickname(key, nick);
+    String nickname = "abc";
+    byte[] rpc = Nickname.giveNickname(address, nickname);
     assertThatThrownBy(() -> blockchain.sendAction(account, nicknameAddress, rpc, 900))
         .isInstanceOf(ActionFailureException.class)
         .hasMessageContaining("Ran out of gas");
 
     Nickname.ContractState state = nicknameContract.getState();
-    assertThat(state.map().getNextN(null, 10).size()).isEqualTo(1);
+    assertThat(state.nicknames().getNextN(null, 10).size()).isEqualTo(1);
   }
 
   /** Can handle many nicknames. */
   @ContractTest(previous = "setup")
   void manyNicknames() {
     for (int i = 0; i < 1000; i++) {
-      String hex = HexFormat.of().toHexDigits(i);
-      BlockchainAddress key = BlockchainAddress.fromString("00".repeat(17) + hex);
-      blockchain.sendAction(account, nicknameAddress, Nickname.giveNickname(key, hex));
+      String nickname = HexFormat.of().toHexDigits(i);
+      BlockchainAddress address = BlockchainAddress.fromString("00".repeat(17) + nickname);
+      blockchain.sendAction(account, nicknameAddress, Nickname.giveNickname(address, nickname));
     }
     Nickname.ContractState state = nicknameContract.getState();
     for (int i = 0; i < 1000; i++) {
-      String hex = HexFormat.of().toHexDigits(i);
-      BlockchainAddress key = BlockchainAddress.fromString("00".repeat(17) + hex);
-      assertThat(state.map().get(key)).isEqualTo(hex);
+      String nickname = HexFormat.of().toHexDigits(i);
+      BlockchainAddress address = BlockchainAddress.fromString("00".repeat(17) + nickname);
+      assertThat(state.nicknames().get(address)).isEqualTo(nickname);
     }
   }
 }

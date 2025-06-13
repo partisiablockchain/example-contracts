@@ -64,7 +64,7 @@ cargo pbc transaction action --gas 10000000 "$CONTRACT_ADDRESS" register_sharing
    signature.
 
 ```bash
-curl -X PUT -d @SHARE_FILE_1 -H "Authorization: secp256k1 $SIGNATURE" "$EE_ENDPOINT/executioncontainer/$CONTRACT_ADDRESS/shares/123"
+curl -X PUT -d @SHARE_FILE_1 -H "Authorization: secp256k1 $SIGNATURE $TIMESTAMP" "$EE_ENDPOINT/offchain/$CONTRACT_ADDRESS/shares/123"
 ```
 
 6. The sharing's structure in the contract state should now indicate that one
@@ -74,14 +74,10 @@ curl -X PUT -d @SHARE_FILE_1 -H "Authorization: secp256k1 $SIGNATURE" "$EE_ENDPO
    create the signature.
 
 ```bash
-curl -H "Authorization: secp256k1 $SIGNATURE" "$EE_ENDPOINT/executioncontainer/$CONTRACT_ADDRESS/shares/123"
+curl -H "Authorization: secp256k1 $SIGNATURE $TIMESTAMP" "$EE_ENDPOINT/offchain/$CONTRACT_ADDRESS/shares/123"
 ```
 
 ## Authentication
-
-> [!warning]
-> This authentication protocol does not support timestamps. If a `GET` request is
-> leaked it can be used to access secret shares forever.
 
 > [!tip]
 > You can modify the `Sharing::is_authenticated` method to use your own
@@ -94,17 +90,21 @@ ensures that only the owner of a secret-shared variable is capable of
 downloading and reconstructing it.
 
 The authentication protocol is based upon setting the `Authorization` header to
-a value of the form `secp256k1 [SIGNATURE]`, where SIGNATURE is a hex-encoding
-of a [SECP256k1 signature](https://en.bitcoin.it/wiki/Secp256k1) of a specific
-message described in detail below. This authentication protocol was chosen
-because it allows the smart contract to uniquely identify a user using the same
-identity both on-chain and off-chain. Users and clients only need to keep track
-of a single secret-key to be able to sign both on-chain transactions, and
-off-chain HTTP requests.
+a value of the form `secp256k1 [SIGNATURE] [TIMESTAMP]`, where SIGNATURE is a
+hex-encoding of a [SECP256k1 signature](https://en.bitcoin.it/wiki/Secp256k1)
+of a specific message described in detail below, and TIMESTAMP is the number of
+milliseconds since the unix epoch.
+
+Requests for download are valid for one minute.
+
+This authentication protocol was chosen because it allows the smart contract to
+uniquely identify a user using the same identity both on-chain and off-chain.
+Users and clients only need to keep track of a single secret-key to be able to
+sign both on-chain transactions, and off-chain HTTP requests.
 
 ### Auditable Downloads
 
-User must authenticate with the smart contract before they are allowed to
+Users must authenticate with the smart contract before they are allowed to
 download their shares from the engines. This improves auditability, and allows
 auditors to create a full trace of when the secret sharing was created and
 accessed.
@@ -112,6 +112,13 @@ accessed.
 > [!tip]
 > This functionality can be disabled by removing the
 > `assert_download_deadline_not_passed` function.
+
+### Auditable Deletions
+
+Users can delete the variables they have uploaded by calling the
+`delete_sharing` invocation. This will result in the engines deleting the data,
+and reporting the status of the deletion to the smart contract. This allows the
+user to monitor how far the deletion request have come.
 
 ### Signature
 
@@ -124,6 +131,7 @@ format](https://partisiablockchain.gitlab.io/documentation/smart-contracts/smart
 - Contract address (21 bytes)
 - Request Method (`GET` or `PUT`), size prefixed (4+ bytes)
 - Request URI (`/shares/{sharingId}`), size prefixed (4+ bytes)
+- Timestamp (8 bytes)
 - Request Body, size prefixed (4+ bytes)
 
 ### Signature Example
@@ -133,7 +141,7 @@ An example of how to sign a request for the shares `123213`:
 ```text
     GET /shares/123123
     Headers:
-    - Authorization: secp256k1 [SIGNATURE]
+    - Authorization: secp256k1 [SIGNATURE] [TIMESTAMP]
 ```
 
 Where `SIGNATURE` is computed as:
@@ -144,6 +152,7 @@ Sign(Sha256(
     contractAddress ||
     0x00000003 || "GET" ||
     0x0000000e || "/shares/123123" ||
+    timestamp ||
     0x00000000 || ""))
 ```
 

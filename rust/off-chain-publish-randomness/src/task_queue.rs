@@ -1,7 +1,6 @@
 //! Task queue system for orchestrating on-chain/off-chain work.
 
 use create_type_spec_derive::CreateTypeSpec;
-use pbc_contract_common::address::Shortname;
 use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::off_chain::{OffChainContext, OffChainStorage};
 use pbc_traits::{ReadWriteState, WriteRPC};
@@ -161,34 +160,6 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
     /// Must be called on-chain.
     pub fn remove_task(&mut self, remove_task: TaskId) {
         self.tasks.remove(&remove_task)
-    }
-
-    /// Report the completion of the task to the on-chain smart-contract.
-    ///
-    /// Must be called off-chain.
-    ///
-    /// ## Arguments
-    ///
-    /// - [`context`]: Context used to send the transaction to the contract.
-    /// - [`task`]: The completed task.
-    /// - [`shortname`]: Shortname of the action to call to inform the on-chain of the completion.
-    ///   Must have two RPC arguments of types: [`TaskId`] and `CompletionT`.
-    /// - [`completion`]: The completion data to send to the on-chain.
-    pub fn report_completion_by_shortname(
-        &self,
-        context: &mut OffChainContext,
-        task: Task<DefinitionT, CompletionT>,
-        shortname: Shortname,
-        completion: CompletionT,
-    ) {
-        let rpc_generator = |task_id: TaskId, completion: CompletionT| {
-            let mut payload: Vec<u8> = vec![];
-            shortname.rpc_write_to(&mut payload).unwrap();
-            task_id.rpc_write_to(&mut payload).unwrap();
-            completion.rpc_write_to(&mut payload).unwrap();
-            payload
-        };
-        self.report_completion(context, task, rpc_generator, completion)
     }
 
     /// Report the completion of the task to the on-chain smart-contract.

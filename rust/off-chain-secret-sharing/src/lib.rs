@@ -137,15 +137,25 @@ impl Sharing {
         let Some(header) = request.get_header_value("Authorization") else {
             return false;
         };
-        let Some(signature) = header
-            .strip_prefix("secp256k1 ")
-            .and_then(Signature::from_hex)
-        else {
+
+        let Some(credentials) = Secp256k1Credentials::parse(header) else {
             return false;
         };
-        let message: Vec<u8> = create_signature_message(request, off_chain_context);
 
-        let Some(public_key) = signature.recover_public_key(&message) else {
+        let current_time = off_chain_context
+            .current_time()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as TimestampMsSinceUnix;
+
+        if (current_time - credentials.timestamp) > TIMESTAMP_VALID_DURATION_MS {
+            return false;
+        }
+
+        let message: Vec<u8> =
+            create_signature_message(request, off_chain_context, credentials.timestamp);
+
+        let Some(public_key) = credentials.signature.recover_public_key(&message) else {
             return false;
         };
 
@@ -215,6 +225,24 @@ fn validate_condition_or_produce_http_error(
     }
 }
 
+struct Secp256k1Credentials {
+    timestamp: TimestampMsSinceUnix,
+    signature: Signature,
+}
+
+impl Secp256k1Credentials {
+    fn parse(authentication_header: &str) -> Option<Self> {
+        let data = authentication_header.strip_prefix("secp256k1 ")?;
+        let (token, timestamp_valid_until) = data.split_once(' ')?;
+        let timestamp_valid_until = timestamp_valid_until.parse::<TimestampMsSinceUnix>().ok()?;
+
+        Some(Secp256k1Credentials {
+            signature: Signature::from_hex(token)?,
+            timestamp: timestamp_valid_until,
+        })
+    }
+}
+
 /// State of the contract.
 #[state]
 pub struct ContractState {
@@ -222,6 +250,8 @@ pub struct ContractState {
     nodes: Vec<NodeConfig>,
     /// Active secret sharings
     secret_sharings: AvlTreeMap<SharingId, Sharing>,
+    /// Queue of sharings currently being deleted
+    deletion_queue: AvlTreeMap<SharingId, Vec<bool>>,
 }
 
 impl ContractState {
@@ -261,6 +291,7 @@ pub fn initialize(_ctx: ContractContext, nodes: Vec<NodeConfig>) -> ContractStat
     ContractState {
         nodes,
         secret_sharings: AvlTreeMap::new(),
+        deletion_queue: AvlTreeMap::new(),
     }
 }
 
@@ -366,6 +397,75 @@ pub fn request_download(
     state
 }
 
+/// Delete sharing with the given id.
+///
+/// ### RPC Arguments
+/// - `sharing_id`: Identifier of the sharing.
+#[action(shortname = 0x04)]
+pub fn delete_sharing(
+    ctx: ContractContext,
+    mut state: ContractState,
+    sharing_id: SharingId,
+) -> ContractState {
+    if state.deletion_queue.contains_key(&sharing_id) {
+        panic!("Unable to delete sharing multiple times");
+    }
+
+    let sharing = state
+        .secret_sharings
+        .get(&sharing_id)
+        .expect("Unknown sharing");
+
+    if sharing.owner != ctx.sender {
+        panic!("Unable to delete sharing with another owner");
+    }
+
+    let is_registered_by_all_nodes = sharing.nodes_with_completed_upload.iter().all(|x| *x);
+    if !is_registered_by_all_nodes {
+        panic!("Unable to delete sharing not yet uploaded to all nodes");
+    }
+
+    state
+        .deletion_queue
+        .insert(sharing_id, vec![false; state.nodes.len()]);
+
+    state
+}
+
+/// Register that the sharing with the given id has been deleted for the calling node. Will delete
+/// sharing if all nodes have deleted their share.
+///
+/// ### RPC Arguments
+///
+/// - `sharing_id`: Idnetifier of the sharing.
+#[action(shortname = 0x05)]
+pub fn register_deleted(
+    ctx: ContractContext,
+    mut state: ContractState,
+    sharing_id: SharingId,
+) -> ContractState {
+    let node_index = state
+        .node_index(&ctx.sender)
+        .expect("Caller is not one of the engines");
+
+    let mut deletion_status = state
+        .deletion_queue
+        .get(&sharing_id)
+        .expect("Sharing is not marked for deletion");
+
+    deletion_status[node_index] = true;
+
+    let all_nodes_have_deleted_share = deletion_status.iter().all(|x| *x);
+    if all_nodes_have_deleted_share {
+        state.secret_sharings.remove(&sharing_id);
+        state.deletion_queue.remove(&sharing_id);
+    } else {
+        state.deletion_queue.insert(sharing_id, deletion_status);
+    }
+
+    state
+}
+
 const BUCKET_KEY_SHARES: [u8; 6] = *b"SHARES";
 
 const JSON_RESPONSE_UNKNOWN_URL: &str = "{ \"error\": \"Invalid URL\" }";
@@ -378,6 +478,8 @@ const JSON_RESPONSE_DEADLINE_PASSED: &str =
     "{ \"error\": \"Download not requested, or download deadline has been passed\" }";
 const JSON_RESPONSE_COMMITMENT_MISMATCH: &str =
     "{ \"error\": \"User uploaded data doesn't match commitment\" }";
+
+const TIMESTAMP_VALID_DURATION_MS: TimestampMsSinceUnix = 1000 * 60; // 1 minute
 
 /// Off-chain receives an HTTP request.
 ///
@@ -522,10 +624,12 @@ fn parse_sharing_id(params: Params) -> Result<SharingId, HttpResponseData> {
 /// - Contract address
 /// - Request method ("GET" or "PUT")
 /// - Request Uri ("/shares/{sharingId}")
+/// - Timestamp the number of milliseconds since the unix epoch
 /// - Request body
 pub fn create_signature_message(
     request: &HttpRequestData,
     off_chain_context: &OffChainContext,
+    timestamp: TimestampMsSinceUnix,
 ) -> Vec<u8> {
     let mut message: Vec<u8> = vec![];
     off_chain_context
@@ -538,7 +642,24 @@ pub fn create_signature_message(
         .unwrap();
     request.method.rpc_write_to(&mut message).unwrap();
     request.uri.rpc_write_to(&mut message).unwrap();
+    timestamp.rpc_write_to(&mut message).unwrap();
     request.body.rpc_write_to(&mut message).unwrap();
 
     message
+}
+
+/// Checks for sharings that are marked as deleted and deletes its local share.
+/// Is run every time the contract state updates.
+#[off_chain_on_state_change]
+fn on_state_change(mut ctx: OffChainContext, state: ContractState) {
+    for (sharing_id, _status) in state.deletion_queue.iter() {
+        let mut storage: OffChainStorage<SharingId, SecretShare> = secret_share_storage(&mut ctx);
+        if storage.get(&sharing_id).is_some() {
+            storage.remove(&sharing_id);
+
+            let payload = register_deleted::rpc(sharing_id);
+
+            ctx.send_transaction_to_contract(payload, 2400);
+        }
+    }
 }

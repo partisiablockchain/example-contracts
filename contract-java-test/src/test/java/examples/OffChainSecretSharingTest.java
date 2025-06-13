@@ -356,8 +356,10 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
   @ContractTest(previous = "sendShareToEngine")
   void invalidSignature() {
     String invalidSignatureHex = "0102030405060708090a0b0c0d0e0d";
+    long now = blockchain.getBlockProductionTime();
+
     final Map<String, List<String>> headers =
-        Map.of("Authorization", List.of("secp256k1 " + invalidSignatureHex));
+        Map.of("Authorization", List.of("secp256k1 " + invalidSignatureHex + " " + now));
     HttpRequestData requestData =
         new HttpRequestData("GET", "/shares/" + SHARING_ID_1, headers, "");
     final HttpResponseData response = makeEngine0Request(requestData);
@@ -416,6 +418,64 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
         .hasMessageContaining("Caller is not one of the engines");
   }
 
+  /** Sharing is deleted from contract and off-chain storage once marked for deletion. */
+  @ContractTest(previous = "eachNodeStoresItsOwnSharing")
+  void deleteSharing() {
+    byte[] payload = OffChainSecretSharing.deleteSharing(SHARING_ID_1);
+    blockchain.sendAction(sender, contractAddress, payload);
+
+    OffChainSecretSharing.ContractState state = contract.getState();
+    OffChainSecretSharing.Sharing sharing = state.secretSharings().get(SHARING_ID_1);
+    assertThat(sharing).isNull();
+
+    for (int i = 0; i < engines.size(); i++) {
+      HttpRequestData requestData = downloadRequest(senderKey, engineConfigs.get(i), SHARING_ID_1);
+      HttpResponseData response =
+          engines.get(i).makeHttpRequest(contractAddress, requestData).response();
+      assertThat(response.statusCode()).isEqualTo(404);
+      assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unknown sharing\" }");
+    }
+  }
+
+  /** A sharing can only be deleted once. */
+  @ContractTest(previous = "deleteSharing")
+  void deleteSharingTwice() {
+    byte[] payload = OffChainSecretSharing.deleteSharing(SHARING_ID_1);
+    Assertions.assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, payload))
+        .hasMessageContaining("Unknown sharing");
+  }
+
+  /** The contract fails to delete sharing if not all nodes have registed the sharing. */
+  @ContractTest(previous = "sendShareToEngine")
+  void deleteSharingNotRegistedByAllNodes() {
+    byte[] payload = OffChainSecretSharing.deleteSharing(SHARING_ID_1);
+    Assertions.assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, payload))
+        .hasMessageContaining("Unable to delete sharing not yet uploaded to all nodes");
+  }
+
+  /**
+   * The contract fails to delete sharing if the deletion is initiated by someone else than the
+   * owner.
+   */
+  @ContractTest(previous = "sendShareToEngine")
+  void deleteSharingWithAnotherOwner() {
+    byte[] payload = OffChainSecretSharing.deleteSharing(SHARING_ID_1);
+    Assertions.assertThatThrownBy(
+            () -> blockchain.sendAction(otherSender, contractAddress, payload))
+        .hasMessageContaining("Unable to delete sharing with another owner");
+  }
+
+  /** A user can register a sharing with a previously deleted id on the contract. */
+  @ContractTest(previous = "deleteSharing")
+  void registerDeletedShareId() {
+    byte[] payload = OffChainSecretSharing.registerSharing(SHARING_ID_1, SHARE_COMMITMENTS);
+    blockchain.sendAction(sender, contractAddress, payload);
+
+    OffChainSecretSharing.ContractState state = contract.getState();
+    OffChainSecretSharing.Sharing sharing = state.secretSharings().get(SHARING_ID_1);
+    assertThat(sharing).isNotNull();
+  }
+
   /** Fail when sending wrong number of commitments for a secret-sharing. */
   @ContractTest(previous = "setup")
   void failWhenSendingWrongNumberCommitmentsForSecretSharing() {
@@ -453,6 +513,62 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
         });
   }
 
+  /** The node fails with 401 if the request does not contain a valid timestamp. */
+  @ContractTest(previous = "registerSharing")
+  void invalidTimestamp() {
+    String method = "GET";
+    String uri = "/shares/" + SHARING_ID_1;
+    long timestamp = blockchain.getBlockProductionTime() - 2 * 60 * 1000;
+    Hash messageHash =
+        createMessageHash(
+            engineConfigs.get(0).address(), contractAddress, method, uri, timestamp, new byte[] {});
+    Signature signature = senderKey.sign(messageHash);
+    final Map<String, List<String>> headers = createHeaders(signature, timestamp);
+
+    final HttpRequestData request = new HttpRequestData(method, uri, headers, "");
+    HttpResponseData response = engines.get(0).makeHttpRequest(contractAddress, request).response();
+
+    assertThat(response.statusCode()).isEqualTo(401);
+    assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unauthorized\" }");
+  }
+
+  /** The node fails with 401 if the request does not contain a timestamp. */
+  @ContractTest(previous = "registerSharing")
+  void missingTimestamp() {
+    String method = "GET";
+    String uri = "/shares/" + SHARING_ID_1;
+    Hash messageHash =
+        createMessageHash(
+            engineConfigs.get(0).address(), contractAddress, method, uri, 0, new byte[] {});
+    Signature signature = senderKey.sign(messageHash);
+    final Map<String, List<String>> headers =
+        Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString()));
+
+    final HttpRequestData request = new HttpRequestData(method, uri, headers, "");
+    HttpResponseData response = engines.get(0).makeHttpRequest(contractAddress, request).response();
+
+    assertThat(response.statusCode()).isEqualTo(401);
+    assertThat(response.bodyAsText()).isEqualTo("{ \"error\": \"Unauthorized\" }");
+  }
+
+  private static Hash createMessageHash(
+      BlockchainAddress engineAddress,
+      BlockchainAddress contractAddress,
+      String method,
+      String uri,
+      long timestamp,
+      byte[] data) {
+    return Hash.create(
+        stream -> {
+          engineAddress.write(stream);
+          contractAddress.write(stream);
+          stream.writeString(method);
+          stream.writeString(uri);
+          stream.writeLong(timestamp);
+          stream.writeDynamicBytes(data);
+        });
+  }
+
   /**
    * Create a signed share upload request.
    *
@@ -468,14 +584,20 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
       BigInteger secretSharingId,
       byte[] share) {
     assertThat(share).as("Share must have nonce").hasSizeGreaterThan(32);
+    long timestamp = blockchain.getBlockProductionTime();
 
     final String method = "PUT";
     final Signature signature =
         SecretSharingClient.createSignatureForOffChainHttpRequest(
-            senderKey, engineConfig.address(), contractAddress, method, secretSharingId, share);
+            senderKey,
+            engineConfig.address(),
+            contractAddress,
+            method,
+            secretSharingId,
+            timestamp,
+            share);
 
-    final Map<String, List<String>> headers =
-        Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString()));
+    final Map<String, List<String>> headers = createHeaders(signature, timestamp);
     return new HttpRequestData(
         method, SecretSharingClient.contractUri(secretSharingId), headers, Bytes.fromBytes(share));
   }
@@ -493,6 +615,8 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
       OffChainSecretSharing.NodeConfig engineConfig,
       BigInteger secretSharingId) {
     final String method = "GET";
+    long timestamp = blockchain.getBlockProductionTime();
+
     final Signature signature =
         SecretSharingClient.createSignatureForOffChainHttpRequest(
             senderKey,
@@ -500,11 +624,24 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
             contractAddress,
             method,
             secretSharingId,
+            timestamp,
             new byte[0]);
 
-    final Map<String, List<String>> headers =
-        Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString()));
+    final Map<String, List<String>> headers = createHeaders(signature, timestamp);
     return new HttpRequestData(
         method, SecretSharingClient.contractUri(secretSharingId), headers, "");
+  }
+
+  /**
+   * Create headers requests.
+   *
+   * @param signature the signature of the request
+   * @param timestamp the time of the request
+   * @return the headers with a Authorization header
+   */
+  static Map<String, List<String>> createHeaders(Signature signature, long timestamp) {
+    return Map.of(
+        "Authorization",
+        List.of(SecretSharingClient.authorizationHeaderValue(signature, timestamp)));
   }
 }
