@@ -18,7 +18,6 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import org.assertj.core.api.Assertions;
 
 /** Test suite for the {@link OffChainSecretSharing} contract. */
@@ -115,21 +114,22 @@ public final class OffChainSecretSharingClientTest extends JunitContractTest {
         senderKey,
         XorSecretShares.FACTORY,
         getOffChainSecretSharing(),
-        new DelegateHttpToEngines());
+        new DelegateHttpToEngines(),
+        () -> blockchain.getBlockProductionTime());
   }
 
   private final class DelegateHttpToEngines implements SecretSharingClient.EndpointHttpClient {
 
     @Override
-    public byte[] downloadShare(Signature signature, String fullUrl) {
+    public byte[] downloadShare(Signature signature, String fullUrl, long timestamp) {
       final URI uri = ExceptionConverter.call(() -> new URI(fullUrl), "Bad url");
-      final String contractPath = uri.getPath().substring(62);
+      final String contractPath = uri.getPath().substring(52);
 
       HttpRequestData requestData =
           new HttpRequestData(
               "GET",
               contractPath,
-              Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString())),
+              OffChainSecretSharingTest.createHeaders(signature, timestamp),
               Bytes.EMPTY);
 
       final int engineIndex = engineIndexForHostname(uri.getHost());
@@ -142,15 +142,16 @@ public final class OffChainSecretSharingClientTest extends JunitContractTest {
     }
 
     @Override
-    public int uploadShare(Signature signature, String fullUrl, byte[] secretShare) {
+    public int uploadShare(
+        Signature signature, String fullUrl, long timestamp, byte[] secretShare) {
       final URI uri = ExceptionConverter.call(() -> new URI(fullUrl), "Bad url");
-      final String contractPath = uri.getPath().substring(62);
+      final String contractPath = uri.getPath().substring(52);
 
       HttpRequestData requestData =
           new HttpRequestData(
               "PUT",
               contractPath,
-              Map.of("Authorization", List.of("secp256k1 " + signature.writeAsString())),
+              OffChainSecretSharingTest.createHeaders(signature, timestamp),
               Bytes.fromBytes(secretShare));
 
       final int engineIndex = engineIndexForHostname(uri.getHost());

@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
@@ -69,19 +70,21 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
      *
      * @param signature the signature to put in the authorization header
      * @param fullUrl Full url of the download.
+     * @param timestamp The time when signed
      * @return downloaded secret share
      */
-    byte[] downloadShare(Signature signature, String fullUrl);
+    byte[] downloadShare(Signature signature, String fullUrl, long timestamp);
 
     /**
      * Upload a secret share to an execution engine by sending a put request.
      *
      * @param signature the signature to put in the authorization header
      * @param fullUrl Full url of the download.
+     * @param timestamp The time when signed
      * @param secretShare Secret share data to upload.
      * @return status code.
      */
-    int uploadShare(Signature signature, String fullUrl, byte[] secretShare);
+    int uploadShare(Signature signature, String fullUrl, long timestamp, byte[] secretShare);
   }
 
   private final TransactionSender transactionSender;
@@ -90,6 +93,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
   private final OffChainSecretSharing offChainSecretSharingContract;
   private final SecretShares.Factory<SecretSharesT> secretSharesFactory;
   private final EndpointHttpClient endpointHttpClient;
+  private final Supplier<Long> timestampSupplier;
 
   /**
    * Create a new {@link SecretSharingClient}.
@@ -102,6 +106,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
    * @param offChainSecretSharingContract Client used to access the state of the smart contract.
    * @param endpointHttpClient {@link EndpointHttpClient} used to interact with execution engine
    *     nodes.
+   * @param timestampSupplier the function providing timestamps
    */
   private SecretSharingClient(
       final TransactionSender transactionSender,
@@ -109,7 +114,8 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
       final KeyPair senderKey,
       final SecretShares.Factory<SecretSharesT> secretSharesFactory,
       final OffChainSecretSharing offChainSecretSharingContract,
-      final EndpointHttpClient endpointHttpClient) {
+      final EndpointHttpClient endpointHttpClient,
+      final Supplier<Long> timestampSupplier) {
     this.transactionSender = Objects.requireNonNull(transactionSender);
     this.secretSharesFactory = Objects.requireNonNull(secretSharesFactory);
     this.offChainSecretSharingContractAddress =
@@ -117,6 +123,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
     this.senderKey = Objects.requireNonNull(senderKey);
     this.offChainSecretSharingContract = Objects.requireNonNull(offChainSecretSharingContract);
     this.endpointHttpClient = Objects.requireNonNull(endpointHttpClient);
+    this.timestampSupplier = timestampSupplier;
   }
 
   /**
@@ -153,7 +160,8 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
         secretSharesFactory,
         new OffChainSecretSharing(
             BlockchainStateClientImpl.create(readerUrl), offChainSecretSharingContractAddress),
-        new JakartaClient());
+        new JakartaClient(),
+        System::currentTimeMillis);
   }
 
   /**
@@ -167,6 +175,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
    * @param offChainSecretSharingContract Client used to access the state of the smart contract.
    * @param endpointHttpClient {@link EndpointHttpClient} used to interact with execution engine
    *     nodes.
+   * @param timestampSupplier the function providing timestamps
    */
   public static <SecretSharesT extends SecretShares>
       SecretSharingClient<SecretSharesT> forTestBlockchain(
@@ -175,14 +184,16 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
           final KeyPair senderKey,
           final SecretShares.Factory<SecretSharesT> secretSharesFactory,
           final OffChainSecretSharing offChainSecretSharingContract,
-          final EndpointHttpClient endpointHttpClient) {
+          final EndpointHttpClient endpointHttpClient,
+          final Supplier<Long> timestampSupplier) {
     return new SecretSharingClient<>(
         transactionSender,
         offChainSecretSharingContractAddress,
         senderKey,
         secretSharesFactory,
         offChainSecretSharingContract,
-        endpointHttpClient);
+        endpointHttpClient,
+        timestampSupplier);
   }
 
   /**
@@ -232,6 +243,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
         GAS_COST_REQUEST_DOWNLOAD);
 
     logger.info("Downloading share with id {} from {} engines", sharingId, nodes.size());
+    long timestamp = timestampSupplier.get();
 
     final List<byte[]> shareBytes = new ArrayList<>();
     for (OffChainSecretSharing.NodeConfig node : nodes) {
@@ -242,9 +254,11 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
               offChainSecretSharingContractAddress,
               "GET",
               sharingId,
+              timestamp,
               new byte[] {});
       final byte[] receivedShare =
-          endpointHttpClient.downloadShare(signature, buildUrlForSharing(node, sharingId));
+          endpointHttpClient.downloadShare(
+              signature, buildUrlForSharing(node, sharingId), timestamp);
       shareBytes.add(receivedShare);
       logger.info("Received share {} from engine: {}", receivedShare, node.address());
     }
@@ -301,6 +315,8 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
     final List<OffChainSecretSharing.NodeConfig> nodes = getEngines();
     logger.info("Secret sharing and uploading to id {} for {} engines", sharingId, nodes.size());
 
+    long timestamp = timestampSupplier.get();
+
     for (int i = 0; i < nodes.size(); i++) {
       final OffChainSecretSharing.NodeConfig node = nodes.get(i);
       final byte[] shareBytes = shares.getShareBytes(i);
@@ -311,13 +327,14 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
               offChainSecretSharingContractAddress,
               "PUT",
               sharingId,
+              timestamp,
               shareBytes);
       logger.info("Uploading share {} with id {} to engine", shareBytes, sharingId);
       int responseStatusCode;
       for (int uploadAttempt = 0; uploadAttempt < 10; uploadAttempt++) {
         responseStatusCode =
             endpointHttpClient.uploadShare(
-                signature, buildUrlForSharing(node, sharingId), shareBytes);
+                signature, buildUrlForSharing(node, sharingId), timestamp, shareBytes);
         if (responseStatusCode == 201) {
           break;
         }
@@ -364,6 +381,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
    * @param contractAddress Address of the contract to send the request to.
    * @param method http method (GET or PUT). Not nullable
    * @param sharingId Identifier of the secret-sharing. Not nullable.
+   * @param timestamp The time when signed
    * @param data the secret to send. Not nullable
    * @return the created {@link Signature}. Not nullable.
    */
@@ -373,10 +391,11 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
       final BlockchainAddress contractAddress,
       final String method,
       final BigInteger sharingId,
+      final long timestamp,
       final byte[] data) {
     final Hash hash =
         createHashForOffChainHttpRequest(
-            engineAddress, contractAddress, method, contractUri(sharingId), data);
+            engineAddress, contractAddress, method, contractUri(sharingId), timestamp, data);
     return senderKey.sign(hash);
   }
 
@@ -388,6 +407,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
    * @param contractAddress Address of the contract to send the request to.
    * @param method http method (GET or PUT). Not nullable
    * @param uri URI of the target endpoint. Not nullable.
+   * @param timestamp The time when signed
    * @param data request body. Not nullable
    * @return the created {@link Hash}. Not nullable.
    * @see #createSignatureForOffChainHttpRequest
@@ -397,6 +417,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
       BlockchainAddress contractAddress,
       String method,
       String uri,
+      long timestamp,
       byte[] data) {
     return Hash.create(
         stream -> {
@@ -404,6 +425,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
           contractAddress.write(stream);
           stream.writeString(method);
           stream.writeString(uri);
+          stream.writeLong(timestamp);
           stream.writeDynamicBytes(data);
         });
   }
@@ -417,7 +439,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
       OffChainSecretSharing.NodeConfig node,
       BigInteger sharingId) {
     return node.endpoint()
-        + "/executioncontainer/"
+        + "/offchain/"
         + offChainSecretSharingContractAddress.writeAsString()
         + contractUri(sharingId);
   }
@@ -436,21 +458,22 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
     private static final Client CLIENT = getClient();
 
     @Override
-    public byte[] downloadShare(Signature signature, String fullUrl) {
+    public byte[] downloadShare(Signature signature, String fullUrl, long timestamp) {
       return CLIENT
           .target(fullUrl)
           .request()
-          .header("Authorization", "secp256k1 " + signature.writeAsString())
+          .header("Authorization", authorizationHeaderValue(signature, timestamp))
           .buildGet()
           .invoke(byte[].class);
     }
 
     @Override
-    public int uploadShare(Signature signature, String fullUrl, byte[] secretShare) {
+    public int uploadShare(
+        Signature signature, String fullUrl, long timestamp, byte[] secretShare) {
       return CLIENT
           .target(fullUrl)
           .request()
-          .header("Authorization", "secp256k1 " + signature.writeAsString())
+          .header("Authorization", authorizationHeaderValue(signature, timestamp))
           .buildPut(Entity.entity(secretShare, MediaType.APPLICATION_OCTET_STREAM_TYPE))
           .invoke()
           .getStatus();
@@ -496,5 +519,16 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
    */
   public static byte[] removeNoncePrefix(byte[] prefixedData) {
     return Arrays.copyOfRange(prefixedData, NONCE_LENGTH, prefixedData.length);
+  }
+
+  /**
+   * Create Authorization header value.
+   *
+   * @param signature the signature of the request
+   * @param timestamp the time of the request
+   * @return the Authorization header value.
+   */
+  public static String authorizationHeaderValue(Signature signature, long timestamp) {
+    return "secp256k1 " + signature.writeAsString() + " " + timestamp;
   }
 }

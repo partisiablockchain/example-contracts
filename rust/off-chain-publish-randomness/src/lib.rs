@@ -232,12 +232,9 @@ fn update_commitment(ctx: &mut OffChainContext, state: &ContractState) {
     let commitment = Hash::digest(&randomness);
     storage_commit_to_share(ctx).insert(commitment.clone(), randomness);
 
-    state.commit_queue.report_completion_by_shortname(
-        ctx,
-        uncompleted,
-        commit_to_randomness::SHORTNAME,
-        commitment,
-    );
+    state
+        .commit_queue
+        .report_completion(ctx, uncompleted, commit_to_randomness::rpc, commitment);
 }
 
 /// Checks the on-chain state for whether there is an unresolved upload task, and solves it.
@@ -252,12 +249,9 @@ fn update_upload(ctx: &mut OffChainContext, state: &ContractState) -> Option<()>
     let commitment: Hash = uncompleted.definition().commitments[engine_index as usize].clone();
     let randomness: Randomness = storage_commit_to_share(ctx).get(&commitment)?;
 
-    state.upload_queue.report_completion_by_shortname(
-        ctx,
-        uncompleted,
-        upload_randomness::SHORTNAME,
-        randomness,
-    );
+    state
+        .upload_queue
+        .report_completion(ctx, uncompleted, upload_randomness::rpc, randomness);
 
     storage_commit_to_share(ctx).remove(&commitment);
 
