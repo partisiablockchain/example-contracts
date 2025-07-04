@@ -3,7 +3,6 @@ package examples;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.partisiablockchain.BlockchainAddress;
-import com.partisiablockchain.container.execution.protocol.Bytes;
 import com.partisiablockchain.container.execution.protocol.HttpRequestData;
 import com.partisiablockchain.container.execution.protocol.HttpResponseData;
 import com.partisiablockchain.crypto.Hash;
@@ -16,6 +15,7 @@ import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.TestBlockchain;
 import com.partisiablockchain.language.testenvironment.executionengine.TestExecutionEngine;
 import com.secata.stream.SafeDataOutputStream;
+import com.secata.tools.immutable.Bytes;
 import examples.client.SecretShares;
 import examples.client.SecretSharingClient;
 import java.math.BigInteger;
