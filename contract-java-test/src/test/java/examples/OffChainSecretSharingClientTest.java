@@ -1,7 +1,6 @@
 package examples;
 
 import com.partisiablockchain.BlockchainAddress;
-import com.partisiablockchain.container.execution.protocol.Bytes;
 import com.partisiablockchain.container.execution.protocol.HttpRequestData;
 import com.partisiablockchain.container.execution.protocol.HttpResponseData;
 import com.partisiablockchain.crypto.KeyPair;
@@ -12,6 +11,7 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.testenvironment.executionengine.TestExecutionEngine;
 import com.secata.tools.coverage.ExceptionConverter;
+import com.secata.tools.immutable.Bytes;
 import examples.client.SecretSharingClient;
 import examples.client.XorSecretShares;
 import java.math.BigInteger;

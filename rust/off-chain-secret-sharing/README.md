@@ -31,13 +31,13 @@ Whereas the [`download-shares.sh`](../../scripts/download-shares.sh) script allo
 reconstruct the plaintext of a variable from the same contract:
 
 ```bash
-bash scripts/upload-shares.sh $CONTRACT_ADDRESS 123
+bash scripts/download-shares.sh $CONTRACT_ADDRESS 123
 ```
 
 ## Example Usage, HTTP
 
 The following flow shows how to use the off-chain secret-sharing contract as
-a local test. It requires that you have setup an Execution Engine for the
+a local test. It requires that you have set up an Execution Engine for the
 blockchain you want to target:
 
 1. [Deploy the off-chain secret-sharing
@@ -48,7 +48,10 @@ blockchain you want to target:
 cargo pbc transaction deploy --gas 10000000 ./target/wasm32-unknown-unknown/release/off_chain_secret_sharing.pbc \[ \{ "$EE_ADDRESS" "$EE_ENDPOINT" \} \]
 ```
 
-2. Contract should now deployed and visible in the browser.
+Where `EE_ADDRESS` is the blockchain address corresponding to the `transactionPrivateKey` configured
+for the Execution Engine.
+
+2. Contract should now be deployed and visible in the browser.
 3. [Send an
    invocation](https://partisiablockchain.gitlab.io/documentation/smart-contracts/smart-contract-interactions-on-the-blockchain.html)
    that registers your intention to upload a Secret Sharing. Assign it some id
