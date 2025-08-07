@@ -64,7 +64,7 @@ fn inputted_variable(
     (
         state,
         vec![],
-        vec![zk_compute::identity_sbi32_start(
+        vec![zk_compute::identity_sbi32::start(
             inputted_variable,
             Some(sum_compute_complete::SHORTNAME),
             &SecretVarType {},
@@ -82,7 +82,7 @@ pub fn produce_4(
     (
         state,
         vec![],
-        vec![zk_compute::produce_4_start(
+        vec![zk_compute::produce_4::start(
             Some(sum_compute_complete::SHORTNAME),
             &SecretVarType {},
         )],

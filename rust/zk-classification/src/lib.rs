@@ -163,7 +163,7 @@ fn inputted_sample(
         (
             state,
             vec![],
-            vec![zk_compute::evaluate_start(
+            vec![zk_compute::evaluate::start(
                 model_id,
                 inputted_sample_id,
                 Some(compute_complete::SHORTNAME),
