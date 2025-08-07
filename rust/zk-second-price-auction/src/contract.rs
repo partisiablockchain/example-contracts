@@ -252,7 +252,7 @@ fn start_auction(
     (
         state,
         vec![],
-        vec![zk_compute::run_auction_start(
+        vec![zk_compute::run_auction::start(
             Some(close_auction::SHORTNAME),
             [&NOT_A_BID, &NOT_A_BID],
         )],

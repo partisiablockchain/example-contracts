@@ -366,7 +366,7 @@ pub fn throw_dice(
     (
         state,
         vec![],
-        vec![zk_compute::compute_dice_throw_start(
+        vec![zk_compute::compute_dice_throw::start(
             Some(sum_compute_complete::SHORTNAME),
             &SecretVarType::ThrowResult {},
         )],

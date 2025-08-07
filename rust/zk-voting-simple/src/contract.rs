@@ -142,7 +142,7 @@ fn start_vote_counting(
     (
         state,
         vec![],
-        vec![zk_compute::count_for_votes_start(
+        vec![zk_compute::count_for_votes::start(
             Some(counting_complete::SHORTNAME),
             &SecretVarMetadata {
                 variable_type: SecretVarType::CountedForVotes,

@@ -86,7 +86,7 @@ fn output_variables(
     (
         state,
         vec![],
-        vec![zk_compute::identity_start(
+        vec![zk_compute::identity::start(
             variable_id,
             Some(computation_complete::SHORTNAME),
             &SecretVarMetadata {},

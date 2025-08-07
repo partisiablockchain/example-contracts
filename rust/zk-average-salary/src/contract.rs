@@ -118,7 +118,7 @@ fn compute_average_salary(
     (
         state,
         vec![],
-        vec![zk_compute::sum_everything_start(
+        vec![zk_compute::sum_everything::start(
             Some(sum_compute_complete::SHORTNAME),
             &SecretVarType::SumResult {},
         )],
