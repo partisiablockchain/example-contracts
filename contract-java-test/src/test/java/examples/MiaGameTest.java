@@ -299,7 +299,8 @@ public final class MiaGameTest extends JunitContractTest {
 
     assertPlayerInTurn(player3);
 
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
 
     Assertions.assertThat(state.players().size()).isEqualTo(2);
     Assertions.assertThat(state.players()).doesNotContain(player2);
@@ -332,7 +333,8 @@ public final class MiaGameTest extends JunitContractTest {
     assertPlayersNumberOfLivesLeft(player1, 0);
     assertNumberOfPlayersLeft(1);
 
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
 
     Assertions.assertThat(state.gamePhase().discriminant()).isEqualTo(MiaGame.GamePhaseD.DONE);
     Assertions.assertThat(state.winner()).isEqualTo(player3);
@@ -534,7 +536,8 @@ public final class MiaGameTest extends JunitContractTest {
   }
 
   private void assertRevealedThrow(int d1, int d2) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.throwResult())
         .isEqualTo(new MiaGame.DiceThrow((byte) d1, (byte) d2));
   }
@@ -573,32 +576,38 @@ public final class MiaGameTest extends JunitContractTest {
   }
 
   void assertCurrentGamePhase(MiaGame.GamePhaseD phase) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.gamePhase().discriminant()).isEqualTo(phase);
   }
 
   void assertPlayerInTurn(BlockchainAddress playerAddress) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.players().get(state.playerThrowing())).isEqualTo(playerAddress);
   }
 
   void assertNumberOfContributions(int expectedNumber) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.nrOfRandomnessContributions()).isEqualTo(expectedNumber);
   }
 
   void assertPlayersNumberOfLivesLeft(BlockchainAddress player, int numberOfLives) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.playerLives().get(player)).isEqualTo((byte) numberOfLives);
   }
 
   private void assertThrowToBeat(MiaGame.DiceThrow diceThrow) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.throwToBeat()).isEqualTo(diceThrow);
   }
 
   private void assertNumberOfPlayersLeft(int expectedNumber) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     Assertions.assertThat(state.players().size()).isEqualTo(expectedNumber);
   }
 
@@ -607,7 +616,8 @@ public final class MiaGameTest extends JunitContractTest {
   }
 
   private int getPlayerLives(BlockchainAddress player) {
-    MiaGame.MiaState state = MiaGame.MiaState.deserialize(blockchain.getContractState(game));
+    MiaGame.MiaState state =
+        MiaGame.ZkStateImmutable.deserialize(blockchain.getContractState(game)).openState();
     return state.playerLives().get(player);
   }
 

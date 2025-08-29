@@ -29,6 +29,10 @@ public final class XorSecretShares implements SecretShares {
 
         @Override
         public XorSecretShares fromSharesBytes(List<byte[]> shares) {
+          if (shares.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException(
+                "XorSecretShares must receive elements from all nodes");
+          }
           return XorSecretShares.fromSharesBytes(shares);
         }
       };

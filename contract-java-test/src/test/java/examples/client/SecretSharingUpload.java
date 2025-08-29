@@ -11,7 +11,9 @@ import java.math.BigInteger;
  *
  * <p>Uses a predefined secret-key, and blockchain reader node.
  *
- * <p>Argument format: {@code <CONTRACT ADDRESS> <ID: NUM> <SECRET: STR>}
+ * <p>Argument format: {@code <SHARING MODE> <CONTRACT ADDRESS> <ID: NUM> <SECRET: STR>}
+ *
+ * <p>Where {@code <SHARING MODE>} is either {@code "xor"} or {@code "shamir"}
  */
 public final class SecretSharingUpload {
 
@@ -28,24 +30,43 @@ public final class SecretSharingUpload {
    */
   public static void main(String[] args) {
     // Load arguments
-    final BlockchainAddress contractAddress = BlockchainAddress.fromString(args[0]);
-    final BigInteger shareId = new BigInteger(args[1]);
-    final String secretPlainText = args[2];
+    final String sharingMode = args[0];
+    final SecretShares.Factory<?> factory = getFactory(sharingMode);
+    final BlockchainAddress contractAddress = BlockchainAddress.fromString(args[1]);
+    final BigInteger shareId = new BigInteger(args[2]);
+    final String secretPlainText = args[3];
 
     // Upload secret shares
-    secretSharingClient(contractAddress)
+    secretSharingClient(contractAddress, factory)
         .registerAndUploadSharing(shareId, secretPlainText.getBytes(UTF_8));
+  }
+
+  /**
+   * Get the corresponding factory according to the supplied sharing mode.
+   *
+   * @param sharingMode "xor" for xor secret sharing or "shamir" for shamir secret sharing
+   * @return the secret sharing factory
+   * @throws RuntimeException if the supplied sharing mode is neither "xor" nor "shamir"
+   */
+  static SecretShares.Factory<?> getFactory(String sharingMode) {
+    if (sharingMode.equals("xor")) {
+      return XorSecretShares.FACTORY;
+    } else if (sharingMode.equals("shamir")) {
+      return ShamirSecretShares.FACTORY;
+    } else {
+      throw new RuntimeException("Invalid secret sharing mode. Valid modes are [xor, shamir].");
+    }
   }
 
   /**
    * Create new {@link SecretSharingClient} for the specific contract.
    *
    * @param contractAddress Address of the contract to interact with. Not nullable.
+   * @param factory factory for creating secret shares
    * @return Client for a secret-sharing smart-contract. Not nullable.
    */
-  static SecretSharingClient<XorSecretShares> secretSharingClient(
-      BlockchainAddress contractAddress) {
-    return SecretSharingClient.create(
-        READER_NODE_ENDPOINT, contractAddress, SENDER_KEY, XorSecretShares.FACTORY);
+  static <T extends SecretShares> SecretSharingClient<T> secretSharingClient(
+      BlockchainAddress contractAddress, SecretShares.Factory<T> factory) {
+    return SecretSharingClient.create(READER_NODE_ENDPOINT, contractAddress, SENDER_KEY, factory);
   }
 }
