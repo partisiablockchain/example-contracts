@@ -44,7 +44,8 @@ public final class ZkFileShareTest extends JunitContractTest {
     fileShareAddress = blockchain.deployZkContract(contractOwner, FILE_SHARE_BYTES, initRpc);
 
     ZkFileShare.CollectionState state =
-        ZkFileShare.CollectionState.deserialize(blockchain.getContractState(fileShareAddress));
+        ZkFileShare.ZkStateImmutable.deserialize(blockchain.getContractState(fileShareAddress))
+            .openState();
 
     Assertions.assertThat(state).isNotNull();
     assertSecretVariablesAmount(0);

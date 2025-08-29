@@ -104,7 +104,8 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
   }
 
   private ZkMultiFunctional.ContractState getState() {
-    return ZkMultiFunctional.ContractState.deserialize(
-        blockchain.getContractState(contractAddress));
+    return ZkMultiFunctional.ZkStateImmutable.deserialize(
+            blockchain.getContractState(contractAddress))
+        .openState();
   }
 }

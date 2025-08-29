@@ -2,6 +2,28 @@ include:
 - project: 'secata-public/pom/shared-ci'
   file: 'rust-docs.yml'
   ref: 'v.2.91.0'
+- project: "secata-public/pom/shared-ci"
+  file: "ts-root.yml"
+  ref: "v.2.91.0"
 - project: 'secata-public/pom/shared-ci'
   file: 'rust-contract.yml'
   ref: 'v.2.91.0'
+
+before-typescript:
+  extends: .cargo
+  stage: build
+  artifacts:
+    paths:
+      - "${NPM_WORK_DIR}/src/test/examples/generated"
+  script:
+    - echo "Generating typescript off chain secret sharing contract code from its abi"
+    - !reference [.functions, cargo-partisia-contract]
+    - cargo_partisia_preload
+    - cd .. || exit
+    - mkdir -p "ts/src/test/examples/generated"
+    - cargo pbc abi codegen --ts rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing.pbc ts/src/test/examples/generated/OffChainSecretSharing.ts
+  needs:
+    - contract-test-prepare-rust
+
+contract-test-prepare-rust:
+  stage: build

@@ -5,4 +5,4 @@
 
 set -e
 cd contract-java-test
-mvn compile test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass="examples.client.SecretSharingUpload" -Dexec.args="$1 $2 $3"
+mvn compile test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass="examples.client.SecretSharingUpload" -Dexec.args="'$1' '$2' '$3' '$4'"

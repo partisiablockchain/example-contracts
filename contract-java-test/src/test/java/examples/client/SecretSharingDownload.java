@@ -10,7 +10,9 @@ import java.math.BigInteger;
  *
  * <p>Uses a predefined secret-key, and blockchain reader node.
  *
- * <p>Argument format: {@code <CONTRACT ADDRESS> <ID: NUM>}
+ * <p>Argument format: {@code <SHARING MODE> <CONTRACT ADDRESS> <ID: NUM>}
+ *
+ * <p>Where {@code <SHARING MODE>} is either {@code "xor"} or {@code "shamir"}
  */
 public final class SecretSharingDownload {
 
@@ -21,12 +23,15 @@ public final class SecretSharingDownload {
    */
   public static void main(String[] args) {
     // Load arguments
-    final BlockchainAddress contractAddress = BlockchainAddress.fromString(args[0]);
-    final BigInteger shareId = new BigInteger(args[1]);
+    final String sharingMode = args[0];
+    final SecretShares.Factory<?> factory = SecretSharingUpload.getFactory(sharingMode);
+    final BlockchainAddress contractAddress = BlockchainAddress.fromString(args[1]);
+    final BigInteger shareId = new BigInteger(args[2]);
 
     // Download secret sharing
     final byte[] reconstructedSecret =
-        SecretSharingUpload.secretSharingClient(contractAddress).downloadAndReconstruct(shareId);
+        SecretSharingUpload.secretSharingClient(contractAddress, factory)
+            .downloadAndReconstruct(shareId);
 
     // Print it
     System.out.println(new String(reconstructedSecret, UTF_8));

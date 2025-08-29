@@ -46,7 +46,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
         blockchain.deployZkContract(owner, CONTRACT_BYTES, ZkSecondPriceAuction.initialize());
     auctionContract = new ZkSecondPriceAuction(getStateClient(), auctionAddress);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
 
     Assertions.assertThat(state.owner()).isEqualTo(owner);
     Assertions.assertThat(state.registeredBidders().size()).isEqualTo(0);
@@ -99,7 +99,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
   void startAuctionOnContract() {
     startAuction(owner);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
 
     Assertions.assertThat(state.auctionResult().secondHighestBid()).isEqualTo(256);
     Assertions.assertThat(state.auctionResult().winner().address()).isEqualTo(accounts.get(2));
@@ -199,7 +199,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
             .withData(new EvmDataBuilder().append(bidderId).append(bidderAccount));
     zkNodes.relayEvmEvent(log, auctionAddress);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState();
+    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
     Assertions.assertThat(state.registeredBidders().size()).isEqualTo(expectedBidderCount);
     ZkSecondPriceAuction.RegisteredBidder registeredBidder =
         state.registeredBidders().get(bidderAccount);

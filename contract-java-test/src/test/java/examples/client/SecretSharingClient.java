@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Contract-specific client for interacting with a {@code off-chain-secret-sharing} contract.
  *
- * <p>This client implements require login for {@link #registerAndUploadSharing uploading} and
+ * <p>This client implements required login for {@link #registerAndUploadSharing uploading} and
  * {@link #downloadAndReconstruct downloading} shares from the nodes of a given secret-sharing
  * contract.
  */
@@ -71,7 +71,7 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
      * @param signature the signature to put in the authorization header
      * @param fullUrl Full url of the download.
      * @param timestamp The time when signed
-     * @return downloaded secret share
+     * @return downloaded secret share or null if unable to download
      */
     byte[] downloadShare(Signature signature, String fullUrl, long timestamp);
 
@@ -260,33 +260,53 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
           endpointHttpClient.downloadShare(
               signature, buildUrlForSharing(node, sharingId), timestamp);
       shareBytes.add(receivedShare);
-      logger.info("Received share {} from engine: {}", receivedShare, node.address());
+      if (receivedShare != null) {
+        logger.info("Received share {} from engine: {}", receivedShare, node.address());
+      } else {
+        logger.info("Unable to receive share from engine: {}", node.address());
+      }
     }
 
     logger.info("All shares received");
-    final SecretSharesT shares = secretSharesFactory.fromSharesBytes(shareBytes);
-    assertEnginesReturnedCorrectShares(sharingId, shares);
+    final List<Hash> expectedCommitments = getExpectedCommitments(sharingId);
+    List<byte[]> filteredShares = filterSharesFromCommitments(expectedCommitments, shareBytes);
+    final SecretSharesT shares = secretSharesFactory.fromSharesBytes(filteredShares);
 
     logger.info("Reconstructing secret");
     return removeNoncePrefix(shares.reconstructPlainText());
   }
 
   /**
-   * Validates that all engines have returned the correct shares. If the haven't it might indicate a
-   * malicious party.
+   * Filters the shares returned by the engines, based on the on-chain commitments. If an engine
+   * returns an invalid share it might indicate a malicious party.
    *
-   * @param sharingId Sharing identifer. Not nullable.
-   * @param shares Shares to validate. Not nullable.
-   * @throws RuntimeException if any of the shares doesn't match the expected commitments.
+   * @param expectedCommitments the expected commitments from the chain
+   * @param rawShares Shares to validate. Not nullable.
+   * @return the filtered shares
    */
-  private void assertEnginesReturnedCorrectShares(BigInteger sharingId, SecretSharesT shares) {
-    final List<Hash> expectedCommitments = getExpectedCommitments(sharingId);
-    if (!expectedCommitments.equals(shares.commitments())) {
-      throw new RuntimeException(
-          "Engines did not return the correct secret-shares.\n"
-              + "On-chain commitments: %s\nHashes of shares: %s"
-                  .formatted(expectedCommitments, shares.commitments()));
+  static List<byte[]> filterSharesFromCommitments(
+      List<Hash> expectedCommitments, List<byte[]> rawShares) {
+    final List<byte[]> filteredShares = new ArrayList<>();
+    for (int i = 0; i < rawShares.size(); i++) {
+      byte[] share = rawShares.get(i);
+      if (share == null) {
+        filteredShares.add(null);
+        continue;
+      }
+      Hash commitment = Hash.create(stream -> stream.write(share));
+      if (commitment.equals(expectedCommitments.get(i))) {
+        filteredShares.add(share);
+      } else {
+        System.out.printf(
+            """
+            Engine number %d did not return the correct secret-share.
+            On-chain commitment: %s
+            Received share's hash: %s%n""",
+            i, expectedCommitments.get(i), commitment);
+        filteredShares.add(null);
+      }
     }
+    return filteredShares;
   }
 
   /**
@@ -459,12 +479,16 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
 
     @Override
     public byte[] downloadShare(Signature signature, String fullUrl, long timestamp) {
-      return CLIENT
-          .target(fullUrl)
-          .request()
-          .header("Authorization", authorizationHeaderValue(signature, timestamp))
-          .buildGet()
-          .invoke(byte[].class);
+      try {
+        return CLIENT
+            .target(fullUrl)
+            .request()
+            .header("Authorization", authorizationHeaderValue(signature, timestamp))
+            .buildGet()
+            .invoke(byte[].class);
+      } catch (RuntimeException e) {
+        return null;
+      }
     }
 
     @Override

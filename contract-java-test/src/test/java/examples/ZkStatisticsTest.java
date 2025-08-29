@@ -40,7 +40,8 @@ public final class ZkStatisticsTest extends JunitContractTest {
     long blockProductionTime = blockchain.getBlockProductionTime() - 1;
 
     ZkStatistics.StatisticsContractState state =
-        ZkStatistics.StatisticsContractState.deserialize(blockchain.getContractState(statistics));
+        ZkStatistics.ZkStateImmutable.deserialize(blockchain.getContractState(statistics))
+            .openState();
 
     Assertions.assertThat(state.deadline()).isEqualTo(blockProductionTime + inputTime);
   }
@@ -71,7 +72,8 @@ public final class ZkStatisticsTest extends JunitContractTest {
     blockchain.sendAction(owner, statistics, computeStatistics);
 
     ZkStatistics.StatisticsContractState state =
-        ZkStatistics.StatisticsContractState.deserialize(blockchain.getContractState(statistics));
+        ZkStatistics.ZkStateImmutable.deserialize(blockchain.getContractState(statistics))
+            .openState();
 
     ZkStatistics.StatisticsResult expectedOutput =
         new ZkStatistics.StatisticsResult(

@@ -211,11 +211,11 @@ public final class MultiVotingTest extends JunitContractTest {
   public void newVotersAreNotRegisteredInPreviouslyDeployedContract() {
     byte[] addVoterOneRpc = MultiVotingContract.addVoter(voter1);
     blockchain.sendAction(multiVotingOwner, multiVoting, addVoterOneRpc);
-    byte[] deployVotingContractRpc = MultiVotingContract.addVotingContract(12, 60 * 60 * 1000);
+    byte[] deployVotingContractRpc = MultiVotingContract.addVotingContract(13, 60 * 60 * 1000);
     blockchain.sendAction(multiVotingOwner, multiVoting, deployVotingContractRpc);
     MultiVotingContract.MultiVotingState state =
         MultiVotingContract.MultiVotingState.deserialize(blockchain.getContractState(multiVoting));
-    BlockchainAddress votingContractAddress = state.votingContracts().get(12L);
+    BlockchainAddress votingContractAddress = state.votingContracts().get(13L);
     Voting.VoteState voteState =
         Voting.VoteState.deserialize(blockchain.getContractState(votingContractAddress));
     Assertions.assertThat(voteState.voters().contains(voter1)).isTrue();

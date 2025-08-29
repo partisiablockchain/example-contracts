@@ -1,0 +1,29 @@
+{
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "target",
+  ],
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "outDir": "./target",
+    "target": "es5",
+    "strict": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "jsx": "react",
+    "lib": [
+      "dom",
+      "es2015",
+      "es2016",
+      "es2017",
+      "esnext"
+    ]
+  }
+}

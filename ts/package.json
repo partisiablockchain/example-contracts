@@ -1,0 +1,53 @@
+{
+  "name": "@partisiablockchain/example-contracts",
+  "version": "5.396.0",
+  "description": "",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "@partisiablockchain/blockchain-api-transaction-client": "5.181.0",
+    "@partisiablockchain/abi-client": "5.255.0",
+    "@types/bn.js": "^5.1.6",
+    "@types/elliptic": "^6.4.18",
+    "@secata-public/bitmanipulation-ts": "3.4.0",
+    "bn.js": "^5.2.1",
+    "elliptic": "^6.5.7",
+    "hash.js": "^1.1.7"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.0.1",
+    "@stryker-mutator/jest-runner": "^9.0.1",
+    "@stryker-mutator/typescript-checker": "^9.0.1",
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-import": "^2.32.0",
+    "jest": "^30.0.0",
+    "jest-fetch-mock": "^3.0.3",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.40.0"
+  },
+  "scripts": {
+    "test": "npx jest",
+    "lint": "npx eslint src --max-warnings 0",
+    "stryker": "stryker run",
+    "build": "npx tsc",
+    "prettier": "npx prettier --print-width 100 --tab-width 2 --quote-props as-needed --trailing-comma es5 --bracket-same-line --prose-wrap preserve --end-of-line lf --write src",
+    "download-shares": "npx ts-node src/test/examples/client/SecretSharingDownload.ts",
+    "upload-shares": "npx ts-node src/test/examples/client/SecretSharingUpload.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "target/main"
+  ],
+  "main": "target/main/index.js",
+  "types": "target/main/index.d.ts",
+  "prettier": {
+    "printWidth": 100,
+    "endOfLine": "auto"
+  }
+}

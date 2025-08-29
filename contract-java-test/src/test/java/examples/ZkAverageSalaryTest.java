@@ -45,7 +45,8 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     averageSalary = blockchain.deployZkContract(account1, CONTRACT_BYTES, initialize);
 
     AverageSalary.ContractState state =
-        AverageSalary.ContractState.deserialize(blockchain.getContractState(averageSalary));
+        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
+            .openState();
 
     assertThat(state.administrator()).isEqualTo(account1);
   }
@@ -84,7 +85,8 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     blockchain.sendAction(account1, averageSalary, startCompute);
 
     AverageSalary.ContractState state =
-        AverageSalary.ContractState.deserialize(blockchain.getContractState(averageSalary));
+        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
+            .openState();
 
     assertThat(state.averageSalaryResult())
         .isEqualTo((100000 + 10000 + 3000 + 15000 + 23300 + 40150) / 6);
@@ -97,7 +99,8 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     blockchain.sendAction(account1, averageSalary, startCompute);
 
     AverageSalary.ContractState state =
-        AverageSalary.ContractState.deserialize(blockchain.getContractState(averageSalary));
+        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
+            .openState();
 
     assertThat(state.averageSalaryResult()).isEqualTo((100000 + 10000 + 0) / 3);
   }
@@ -119,7 +122,8 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
   @ContractTest(previous = "sendSecretInputs")
   void onlyAdministratorCanStartComputation() {
     AverageSalary.ContractState state =
-        AverageSalary.ContractState.deserialize(blockchain.getContractState(averageSalary));
+        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
+            .openState();
 
     assertThat(state.administrator()).isNotEqualTo(account2);
 

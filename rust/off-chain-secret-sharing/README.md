@@ -24,14 +24,14 @@ secret share a variable to the given contract:
 > These scripts must be called from repository root.
 
 ```bash
-bash scripts/upload-shares.sh $CONTRACT_ADDRESS 123 "Plaintext_of_Secret_Value"
+bash scripts/upload-shares.sh xor $CONTRACT_ADDRESS 123 "Plaintext_of_Secret_Value"
 ```
 
 Whereas the [`download-shares.sh`](../../scripts/download-shares.sh) script allows you to download and
 reconstruct the plaintext of a variable from the same contract:
 
 ```bash
-bash scripts/download-shares.sh $CONTRACT_ADDRESS 123
+bash scripts/download-shares.sh xor $CONTRACT_ADDRESS 123
 ```
 
 ## Example Usage, HTTP
@@ -49,7 +49,7 @@ cargo pbc transaction deploy --gas 10000000 ./target/wasm32-unknown-unknown/rele
 ```
 
 Where `EE_ADDRESS` is the blockchain address corresponding to the `transactionPrivateKey` configured
-for the Execution Engine.
+for the Execution Engine and `EE_ENDPOINT` is the rest endpoint where the Execution Engine can be reached.
 
 2. Contract should now be deployed and visible in the browser.
 3. [Send an

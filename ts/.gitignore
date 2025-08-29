@@ -1,0 +1,5 @@
+# TS artifacts to ignore.
+node_modules/
+.stryker-tmp
+stryker.log
+src/test/examples/generated
