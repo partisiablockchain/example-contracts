@@ -10,7 +10,9 @@ const getHeaders: HeadersInit = {
 export type RequestType = "GET" | "PUT" | "POST" | "PATCH";
 
 function buildOptions(method: RequestType, headers: HeadersInit, entityBytes: Buffer | null) {
-  const result: RequestInit = { method, headers, body: entityBytes };
+  const arrayBuffer: Buffer<ArrayBuffer> | null =
+    entityBytes == null ? null : Buffer.from(entityBytes);
+  const result: RequestInit = { method, headers, body: arrayBuffer };
   return result;
 }
 

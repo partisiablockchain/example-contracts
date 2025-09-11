@@ -134,12 +134,12 @@ public final class VotingTest extends JunitContractTest {
     byte[] voteTrueRpc = Voting.vote(true);
     blockchain.sendAction(voter1, voting, voteTrueRpc);
     Voting.VoteState state = Voting.VoteState.deserialize(blockchain.getContractState(voting));
-    Assertions.assertThat(state.votes().size()).isEqualTo(1);
+    Assertions.assertThat(state.votes().get(voter1)).isTrue();
 
     byte[] voteFalseRpc = Voting.vote(false);
     blockchain.sendAction(voter1, voting, voteFalseRpc);
     state = Voting.VoteState.deserialize(blockchain.getContractState(voting));
-    Assertions.assertThat(state.votes().size()).isEqualTo(1);
+    Assertions.assertThat(state.votes().get(voter1)).isFalse();
   }
 
   /** Deployment of a voting contract without any eligible voters fails. */

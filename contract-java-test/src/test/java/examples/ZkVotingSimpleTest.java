@@ -7,7 +7,7 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.junit.exceptions.SecretInputFailureException;
-import com.partisiablockchain.language.testenvironment.zk.node.task.PendingInputId;
+import com.partisiablockchain.language.testenvironment.zk.node.task.VariableId;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
 import java.nio.file.Path;
@@ -214,7 +214,7 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
     // cast vote
     blockchain.sendSecretInput(votingSimple, account1, createSecretIntInput(1), secretInputRpc());
 
-    for (PendingInputId pendingInput : zkNodes.getPendingInputs(votingSimple)) {
+    for (VariableId pendingInput : zkNodes.getPendingInputs(votingSimple)) {
       zkNodes.confirmInput(pendingInput);
     }
 
