@@ -2,7 +2,7 @@ package examples;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.partisiablockchain.BlockchainAddress;
-import com.partisiablockchain.language.abicodegen.ZkSecondPriceAuction;
+import com.partisiablockchain.language.abicodegen.ZkAsAServiceSecondPriceAuction;
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.FuzzyState;
@@ -20,13 +20,17 @@ import org.assertj.core.api.Assertions;
 import org.bouncycastle.jcajce.provider.digest.Keccak;
 import org.bouncycastle.util.encoders.Hex;
 
-/** Test {@link ZkSecondPriceAuction}. */
-public final class ZkSecondPriceAuctionTest extends JunitContractTest {
+/** Test {@link ZkAsAServiceSecondPriceAuction}. */
+public final class ZkAsaServiceSecondPriceAuctionTest extends JunitContractTest {
 
   private static final ContractBytes CONTRACT_BYTES =
       ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_second_price_auction.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_second_price_auction_runner"));
+          Path.of(
+              "../rust/target/wasm32-unknown-unknown/release/"
+                  + "zk_as_a_service_second_price_auction.pbc"),
+          Path.of(
+              "../rust/target/wasm32-unknown-unknown/release/"
+                  + "zk_as_a_service_second_price_auction_runner"));
 
   private static final String ETH_CONTRACT_ADDRESS = "93b080860e7fb5745d11f081cd15556e1d72a15d";
 
@@ -34,7 +38,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
   private BlockchainAddress owner;
   private BlockchainAddress auctionAddress;
 
-  private ZkSecondPriceAuction auctionContract;
+  private ZkAsAServiceSecondPriceAuction auctionContract;
 
   /** Deploy auction contract. */
   @ContractTest
@@ -43,10 +47,11 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
     owner = blockchain.newAccount(999);
 
     auctionAddress =
-        blockchain.deployZkContract(owner, CONTRACT_BYTES, ZkSecondPriceAuction.initialize());
-    auctionContract = new ZkSecondPriceAuction(getStateClient(), auctionAddress);
+        blockchain.deployZkContract(
+            owner, CONTRACT_BYTES, ZkAsAServiceSecondPriceAuction.initialize());
+    auctionContract = new ZkAsAServiceSecondPriceAuction(getStateClient(), auctionAddress);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
+    ZkAsAServiceSecondPriceAuction.ContractState state = auctionContract.getState().openState();
 
     Assertions.assertThat(state.owner()).isEqualTo(owner);
     Assertions.assertThat(state.registeredBidders().size()).isEqualTo(0);
@@ -99,7 +104,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
   void startAuctionOnContract() {
     startAuction(owner);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
+    ZkAsAServiceSecondPriceAuction.ContractState state = auctionContract.getState().openState();
 
     Assertions.assertThat(state.auctionResult().secondHighestBid()).isEqualTo(256);
     Assertions.assertThat(state.auctionResult().winner().address()).isEqualTo(accounts.get(2));
@@ -155,7 +160,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
 
   /** Registered users can bid on the contract. */
   @ContractTest(previous = "startAuctionOnContract")
-  void failToBidOnContractAfterAuctionIsDone() {
+  void failTobidOnContractAfterAuctionIsDone() {
     Assertions.assertThatCode(() -> bidOnContract(accounts.get(6), 256))
         .hasMessageContaining("Cannot place bid after auction has begun");
   }
@@ -174,7 +179,7 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
 
   private void subscribeToBidderRegistrationEvents(BlockchainAddress sender, byte[] evmAddress) {
     byte[] subscribeRpc =
-        ZkSecondPriceAuction.subscribeToBidderRegistration(evmAddress, BigInteger.ONE);
+        ZkAsAServiceSecondPriceAuction.subscribeToBidderRegistration(evmAddress, BigInteger.ONE);
     blockchain.sendAction(sender, auctionAddress, subscribeRpc);
   }
 
@@ -199,9 +204,9 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
             .withData(new EvmDataBuilder().append(bidderId).append(bidderAccount));
     zkNodes.relayEvmEvent(log, auctionAddress);
 
-    ZkSecondPriceAuction.ContractState state = auctionContract.getState().openState();
+    ZkAsAServiceSecondPriceAuction.ContractState state = auctionContract.getState().openState();
     Assertions.assertThat(state.registeredBidders().size()).isEqualTo(expectedBidderCount);
-    ZkSecondPriceAuction.RegisteredBidder registeredBidder =
+    ZkAsAServiceSecondPriceAuction.RegisteredBidder registeredBidder =
         state.registeredBidders().get(bidderAccount);
     Assertions.assertThat(registeredBidder.externalId()).isEqualTo(bidderId);
     Assertions.assertThat(registeredBidder.haveAlreadyBid()).isEqualTo(false);
@@ -214,6 +219,6 @@ public final class ZkSecondPriceAuctionTest extends JunitContractTest {
   }
 
   private void startAuction(BlockchainAddress sender) {
-    blockchain.sendAction(sender, auctionAddress, ZkSecondPriceAuction.startAuction());
+    blockchain.sendAction(sender, auctionAddress, ZkAsAServiceSecondPriceAuction.startAuction());
   }
 }

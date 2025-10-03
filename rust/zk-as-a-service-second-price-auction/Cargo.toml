@@ -1,5 +1,5 @@
 [package]
-name = "zk-second-price-auction"
+name = "zk-as-a-service-second-price-auction"
 readme = "README.md"
 version.workspace = true
 description.workspace = true

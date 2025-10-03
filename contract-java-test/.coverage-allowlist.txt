@@ -11,8 +11,10 @@ upgradable-v3/src/upgrade_from.rs              # junit does not support coverage
 zk-average-salary/src/contract.rs
 zk-average-salary/src/zk_compute.rs
 zk-multi-functional/src/zk_compute.rs
-zk-second-price-auction/src/contract.rs
-zk-second-price-auction/src/zk_compute.rs
+zk-second-price-auction-external-ids/src/contract.rs
+zk-second-price-auction-external-ids/src/zk_compute.rs
+zk-as-a-service-second-price-auction/src/contract.rs
+zk-as-a-service-second-price-auction/src/zk_compute.rs
 zk-statistics/src/zk_compute.rs
 zk-struct-open/src/lib.rs
 zk-struct-open/src/zk_compute.rs
