@@ -9,7 +9,6 @@ use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
 use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::context::ContractContext;
-use pbc_contract_common::events::EventGroup;
 use read_write_state_derive::ReadWriteState;
 
 /// The DNS (Domain Name System) contract contains
@@ -125,20 +124,12 @@ pub fn register_domain(
 /// The state of the DNS, and the address corresponding to the given
 /// domain, if the domain is registered.
 ///
-#[action(shortname = 0x02)]
-pub fn lookup(
-    ctx: ContractContext,
-    state: DnsState,
-    domain: String,
-) -> (DnsState, Vec<EventGroup>) {
-    let entry = state.search_domain(&domain);
-
-    assert!(entry.is_some(), "No address found with the given domain");
-
-    (
-        state,
-        vec![EventGroup::with_return_data(entry.unwrap().address)],
-    )
+#[get(shortname = 0x02)]
+pub fn lookup(ctx: ContractContext, state: &DnsState, domain: String) -> Address {
+    state
+        .search_domain(&domain)
+        .expect("No address found with the given domain")
+        .address
 }
 
 /// Remove a domain from the register.
