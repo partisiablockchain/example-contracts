@@ -73,7 +73,7 @@ public final class ShamirSecretShares implements SecretShares {
   }
 
   /**
-   * Generates a random polynomial of degree 1:
+   * Generates a random polynomial of degree 1.
    *
    * <p><i>f(x)= secret + random*x</i>
    *

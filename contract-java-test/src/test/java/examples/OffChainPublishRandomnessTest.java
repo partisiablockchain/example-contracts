@@ -32,7 +32,7 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
   private List<OffChainPublishRandomness.EngineConfig> engineConfigs;
 
   /** Engine test objects. */
-  @SuppressWarnings("UnusedVariable")
+  @SuppressWarnings({"PMD.UnusedPrivateField", "UnusedVariable"})
   private List<TestExecutionEngine> engines;
 
   private final KeyPair senderKey = new KeyPair(BigInteger.TWO);
