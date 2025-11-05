@@ -63,7 +63,7 @@ pub fn vote(
 
     event_group
         .call(state.dns_address, Shortname::from_u32(0x02))
-        .argument(voting_domain.to_string())
+        .argument(voting_domain)
         .with_cost(1000)
         .done();
 

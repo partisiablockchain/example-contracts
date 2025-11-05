@@ -161,8 +161,8 @@ pub fn add_voting_contract(
 
     event_group
         .call(PUB_DEPLOY_ADDRESS, Shortname::from_u32(4))
-        .argument(state.voting_contract_wasm.clone())
-        .argument(state.voting_contract_abi.clone())
+        .argument(&state.voting_contract_wasm)
+        .argument(&state.voting_contract_abi)
         .argument(create_voting_init_bytes(
             p_id,
             &state.eligible_voters,
