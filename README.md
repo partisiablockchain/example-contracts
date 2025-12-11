@@ -89,6 +89,8 @@ The **Off-Chain** contracts are:
 - [`off-chain-publish-randomness`](./rust/off-chain-publish-randomness):
   Contract that automatically provides random bytes to the blockchain, created
   through a distributed process.
+- [`off-chain-mpc-signing`](./rust/off-chain-mpc-signing): Contract for creating signatures in mpc using a generated
+  secret shared signing key.
 
 The three **Upgradable** contracts are examples for the upgrade process of smart
 contracts:

@@ -86,7 +86,7 @@ pub fn add_voter(
     voter: Address,
 ) -> MultiVotingState {
     assert_eq!(ctx.sender, state.owner, "Only owner can add voters");
-    let voter_exists = state.eligible_voters.iter().any(|x| *x == voter);
+    let voter_exists = state.eligible_voters.contains(&voter);
     if voter_exists {
         panic!("Voter already exists");
     }

@@ -7,6 +7,7 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.FuzzyState;
 import com.partisiablockchain.language.junit.JunitContractTest;
+import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.partisiablockchain.language.testenvironment.zk.node.ZkComputationComplexity;
 import com.secata.stream.BitInput;
 import com.secata.stream.BitOutput;
@@ -32,6 +33,8 @@ public final class ZkClassificationTest extends JunitContractTest {
   private BlockchainAddress resultReceiver;
   private BlockchainAddress classifier;
 
+  private RealNodeClusterInteractions zkNodes;
+
   private static final ContractBytes CONTRACT_BYTES =
       ContractBytes.fromPbcFile(
           Path.of("../rust/target/wasm32-unknown-unknown/release/zk_classification.pbc"),
@@ -49,6 +52,8 @@ public final class ZkClassificationTest extends JunitContractTest {
     modelOwner = blockchain.newAccount(1);
     sampleOwner = blockchain.newAccount(2);
     resultReceiver = blockchain.newAccount(3);
+
+    zkNodes = blockchain.addRealv1MpcNodes();
 
     byte[] initRpc = ZkClassification.initialize();
     classifier = blockchain.deployZkContract(modelOwner, CONTRACT_BYTES, initRpc);

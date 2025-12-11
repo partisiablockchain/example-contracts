@@ -5,6 +5,7 @@ import com.partisiablockchain.language.abicodegen.ZkSecondPriceAuctionExternalId
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
+import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
 import java.nio.file.Path;
@@ -30,11 +31,15 @@ public final class ZkSecondPriceAuctionExternalIdsTest extends JunitContractTest
   private BlockchainAddress auctionContractAddress;
   private ZkSecondPriceAuctionExternalIds auctionContract;
 
+  private RealNodeClusterInteractions zkNodes;
+
   /** Deploy auction contract. */
   @ContractTest
   void deploy() {
     accounts = IntStream.range(1, 10).mapToObj(blockchain::newAccount).toList();
     owner = blockchain.newAccount(999);
+
+    zkNodes = blockchain.addRealv1MpcNodes();
 
     auctionContractAddress =
         blockchain.deployZkContract(

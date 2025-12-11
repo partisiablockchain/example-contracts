@@ -9,6 +9,7 @@ import com.partisiablockchain.language.junit.FuzzyState;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.testenvironment.zk.node.EvmDataBuilder;
 import com.partisiablockchain.language.testenvironment.zk.node.EvmEventLogBuilder;
+import com.partisiablockchain.language.testenvironment.zk.node.RealV1FakeNodes;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
 import java.math.BigInteger;
@@ -38,6 +39,8 @@ public final class ZkAsaServiceSecondPriceAuctionTest extends JunitContractTest 
   private BlockchainAddress owner;
   private BlockchainAddress auctionAddress;
 
+  private RealV1FakeNodes zkNodes;
+
   private ZkAsAServiceSecondPriceAuction auctionContract;
 
   /** Deploy auction contract. */
@@ -45,6 +48,8 @@ public final class ZkAsaServiceSecondPriceAuctionTest extends JunitContractTest 
   void deploy() {
     accounts = IntStream.range(1, 10).mapToObj(blockchain::newAccount).toList();
     owner = blockchain.newAccount(999);
+
+    this.zkNodes = blockchain.addRealv1MpcNodes();
 
     auctionAddress =
         blockchain.deployZkContract(

@@ -40,6 +40,8 @@ public final class ZkFileShareTest extends JunitContractTest {
     initialUser = blockchain.newAccount(19);
     secondUser = blockchain.newAccount(23);
 
+    blockchain.addRealv1MpcNodes();
+
     byte[] initRpc = ZkFileShare.initialize();
     fileShareAddress = blockchain.deployZkContract(contractOwner, FILE_SHARE_BYTES, initRpc);
 

@@ -109,6 +109,8 @@ public final class MiaGameTest extends JunitContractTest {
     player2 = blockchain.newAccount(2);
     player3 = blockchain.newAccount(3);
 
+    blockchain.addRealv1MpcNodes();
+
     byte[] initRpc = MiaGame.initialize(List.of(player1, player2, player3));
 
     game = blockchain.deployZkContract(player1, MIA_CONTRACT, initRpc);

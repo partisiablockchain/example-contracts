@@ -604,7 +604,7 @@ fn http_sharing_get(
     Ok(HttpResponseData::new(200, existing_data.write_to_vec()))
 }
 
-fn secret_share_storage(ctx: &mut OffChainContext) -> OffChainStorage<SharingId, SecretShare> {
+fn secret_share_storage(ctx: &mut OffChainContext) -> OffChainStorage<'_, SharingId, SecretShare> {
     ctx.storage(&BUCKET_KEY_SHARES)
 }
 
@@ -653,7 +653,8 @@ pub fn create_signature_message(
 #[off_chain_on_state_change]
 fn on_state_change(mut ctx: OffChainContext, state: ContractState) {
     for (sharing_id, _status) in state.deletion_queue.iter() {
-        let mut storage: OffChainStorage<SharingId, SecretShare> = secret_share_storage(&mut ctx);
+        let mut storage: OffChainStorage<'_, SharingId, SecretShare> =
+            secret_share_storage(&mut ctx);
         if storage.get(&sharing_id).is_some() {
             storage.remove(&sharing_id);
 
