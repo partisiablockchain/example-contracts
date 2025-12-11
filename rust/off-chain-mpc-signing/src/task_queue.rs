@@ -1,9 +1,15 @@
 //! Task queue system for orchestrating on-chain/off-chain work.
+//!
+//! Copied from the off-chain-publish-randomness contract, but modified to allow the off-chain to
+//! process any task it has not yet completed and not just the next task that has yet to be
+//! completed by all nodes.
 
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::avl_tree_map::AvlTreeMap;
 use pbc_contract_common::off_chain::{OffChainContext, OffChainStorage};
+use pbc_traits::ReadRPC;
 use pbc_traits::{ReadWriteState, WriteRPC};
+use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
 
 /// Identifier of a single [`RandomnessTask`].
@@ -11,9 +17,6 @@ pub type TaskId = u32;
 
 /// Identifier of an engine.
 pub type EngineIndex = u32;
-
-/// Gas used to send report_completion reports.
-const GAS_FOR_REPORT_COMPLETION: u64 = 10_000;
 
 /// Task in the queue.
 ///
@@ -57,6 +60,11 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState>
     pub fn definition(&self) -> &DefinitionT {
         &self.definition
     }
+
+    /// Get the definition of the task.
+    pub fn completion_data(&self) -> &Vec<Option<CompletionT>> {
+        &self.completion_data
+    }
 }
 
 /// On-chain/off-chain task queue, for orchestrating work on off-chain engines that must be
@@ -65,9 +73,9 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState>
 /// The general flow is:
 ///
 /// 1. Task is initialized on-chain using [`TaskQueue::push_task`].
-/// 2. The off-chain component notices the task using [`TaskQueue::get_current_task_if_uncompleted`].
+/// 2. The off-chain component notices the task using [`TaskQueue::first_if_unhandled`].
 /// 3. The off-chain component solves the task, and triggers an notification to the on-chain using [`TaskQueue::report_completion`]
-/// 4. The on-chain component receives the notification, calls [`TaskQueue::mark_completion`], and
+/// 4. The on-chain component receives the notification, calls [`TaskQueue::mark_completed_by_engine`], and
 ///    performs whatever action is suitable after the completion.
 ///
 /// The completion data system is meant for situation where
@@ -82,9 +90,9 @@ pub struct TaskQueue<DefinitionT: ReadWriteState, CompletionT: ReadWriteState> {
     /// Used to track which task should be worked on by the off-chain engines.
     ///
     /// Zero indicates that no tasks have been created so far.
-    task_id_of_current: TaskId,
+    queue: Vec<TaskId>,
     /// The identifier of the
-    task_id_of_last_created: TaskId,
+    next_task_id: TaskId,
     /// The mapping of all currently existing tasks.
     tasks: AvlTreeMap<TaskId, Task<DefinitionT, CompletionT>>,
 }
@@ -104,31 +112,33 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
         Self {
             bucket_id,
             num_engines,
-            task_id_of_current: 0,
-            task_id_of_last_created: 0,
+            queue: vec![],
+            next_task_id: 1,
             tasks: AvlTreeMap::new(),
         }
     }
 
     /// Get the task id of the current task.
-    pub fn task_id_of_current(&self) -> TaskId {
-        self.task_id_of_current
+    pub fn _task_id_of_current(&self) -> TaskId {
+        *self.queue.first().unwrap_or(&0)
     }
 
     /// Add another task to the task queue.
     ///
     /// Must be called on-chain.
-    pub fn push_task(&mut self, definition: DefinitionT) {
-        self.task_id_of_last_created += 1;
+    pub fn push_task(&mut self, definition: DefinitionT) -> TaskId {
+        let task_id = self.next_task_id;
         self.tasks.insert(
-            self.task_id_of_last_created,
+            task_id,
             Task {
-                id: self.task_id_of_last_created,
+                id: task_id,
                 definition,
                 completion_data: vec![None; self.num_engines as usize],
             },
         );
-        self.bump_current_if_needed();
+        self.queue.push(task_id);
+        self.next_task_id += 1;
+        task_id
     }
 
     /// Get the task with the given id.
@@ -139,27 +149,78 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
     /// Get the current task if the off-chain haven't completed it.
     ///
     /// Must be called off-chain.
-    pub fn get_current_task_if_uncompleted(
+    pub fn _first_if_unhandled(
         &self,
         context: &mut OffChainContext,
     ) -> Option<Task<DefinitionT, CompletionT>> {
+        self.queue
+            .iter()
+            .map(|&task_id| self.get_if_unhandled(context, task_id))
+            .next()?
+    }
+
+    /// Get the next task that the off-chain haven't completed yet.
+    /// Returns none if there are no tasks the off-chain hasn't completed.
+    ///
+    /// Must be called off-chain.
+    pub fn next_unhandled(
+        &self,
+        context: &mut OffChainContext,
+    ) -> Option<Task<DefinitionT, CompletionT>> {
+        self.queue
+            .iter()
+            .filter_map(|&task_id| self.get_if_unhandled(context, task_id))
+            .next()
+    }
+    /// Get the next [`limit`] tasks that the off-chain haven't completed yet.
+    /// Returns fewer tasks if there are fewer tasks the off-chain hasn't completed.
+    ///
+    /// Must be called off-chain.
+    pub fn next_multiple_unhandled(
+        &self,
+        context: &mut OffChainContext,
+        limit: usize,
+    ) -> Vec<Task<DefinitionT, CompletionT>> {
+        self.queue
+            .iter()
+            .filter_map(|&task_id| self.get_if_unhandled(context, task_id))
+            .take(limit)
+            .collect()
+    }
+
+    /// Get a specific task if the off-chain haven't completed it.
+    ///
+    /// Must be called off-chain.
+    pub fn get_if_unhandled(
+        &self,
+        context: &mut OffChainContext,
+        task_id: TaskId,
+    ) -> Option<Task<DefinitionT, CompletionT>> {
         let engine_finished_task = self
             .completion_status_storage(context)
-            .get(&self.task_id_of_current())
+            .get(&task_id)
             .is_some();
 
         if engine_finished_task {
             None
         } else {
-            self.get_task(self.task_id_of_current())
+            self.get_task(task_id)
         }
     }
 
     /// Remove the task with the given id.
     ///
     /// Must be called on-chain.
-    pub fn remove_task(&mut self, remove_task: TaskId) {
+    pub fn _remove_task(&mut self, remove_task: TaskId) {
+        self.queue.retain(|&i| i != remove_task);
         self.tasks.remove(&remove_task)
+    }
+
+    /// Removes all uncompleted tasks.
+    ///
+    /// Must be called on-chain.
+    pub fn cancel_all_pending_tasks(&mut self) {
+        self.queue.clear();
     }
 
     /// Report the completion of the task to the on-chain smart-contract.
@@ -172,59 +233,91 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
     /// - [`task`]: The completed task.
     /// - [`rpc_generator`]: Function used to create the RPC for a call to inform the on-chain of the completion.
     /// - [`completion`]: The completion data to send to the on-chain.
+    /// - [`gas_for_cpu`]: The amount of gas to be sent for cpu usage. The gas required for network is automatically calculated.
     pub fn report_completion<RpcGeneratorT>(
         &self,
         context: &mut OffChainContext,
         task: Task<DefinitionT, CompletionT>,
         rpc_generator: RpcGeneratorT,
         completion: CompletionT,
+        gas_for_cpu: u64,
     ) where
         RpcGeneratorT: FnOnce(TaskId, CompletionT) -> Vec<u8>,
     {
-        context.send_transaction_to_contract(
-            rpc_generator(task.id(), completion),
-            GAS_FOR_REPORT_COMPLETION,
-        );
+        let rpc = rpc_generator(task.id(), completion);
+        let gas_for_network = gas_for_network(rpc.len());
+        context.send_transaction_to_contract(rpc, gas_for_network + gas_for_cpu);
 
         self.completion_status_storage(context)
             .insert(task.id(), task.id());
     }
 
+    /// Report the completion of multiple tasks to the on-chain smart-contract using a single transaction.
+    ///
+    /// Must be called off-chain.
+    ///
+    /// ## Arguments
+    ///
+    /// - [`context`]: Context used to send the transaction to the contract.
+    /// - [`task_completions`]: The completed tasks and their completion data.
+    /// - [`rpc_generator`]: Function used to create the RPC for a call to inform the on-chain of the completion.
+    /// - [`gas_for_cpu`]: The amount of gas to be sent for cpu usage. The gas required for network is automatically calculated.
+    pub fn report_completion_batched<RpcGeneratorT>(
+        &self,
+        context: &mut OffChainContext,
+        rpc_generator: RpcGeneratorT,
+        task_completions: Vec<(Task<DefinitionT, CompletionT>, CompletionT)>,
+        gas_for_cpu: u64,
+    ) where
+        RpcGeneratorT: FnOnce(Vec<WithId<CompletionT>>) -> Vec<u8>,
+    {
+        let task_ids: Vec<TaskId> = task_completions.iter().map(|(task, _)| task.id).collect();
+        let rpc = rpc_generator(
+            task_completions
+                .into_iter()
+                .map(|(task, comp)| WithId::new(task.id, comp))
+                .collect(),
+        );
+        let gas_for_network = gas_for_network(rpc.len());
+        context.send_transaction_to_contract(rpc, gas_for_network + gas_for_cpu);
+
+        for task_id in task_ids {
+            self.completion_status_storage(context)
+                .insert(task_id, task_id);
+        }
+    }
+
     /// Marks the task as being completed by the given engine and with the given completion data.
     ///
     /// Must be called on-chain.
-    pub fn mark_completion(
+    pub fn mark_completed_by_engine(
         &mut self,
         engine_index: EngineIndex,
         task_id: TaskId,
         completion: CompletionT,
     ) {
-        let mut task = self.tasks.get(&task_id).expect("No task with given id!");
+        let mut task = self
+            .tasks
+            .get(&task_id)
+            .unwrap_or_else(|| panic!("No task with given id {}", task_id));
         task.completion_data[engine_index as usize] = Some(completion);
+        if task.is_complete() {
+            self.queue.retain(|&i| i != task_id);
+        }
         self.tasks.insert(task_id, task);
-        self.bump_current_if_needed();
     }
 
-    /// Bumps [`TaskQueue::task_id_of_current`] to the next value, if the current task have been
-    /// completed.
+    /// Manually mark that a task has finished.
+    /// Used to complete a task if it e.g. only requires a number of engines to respond
     ///
     /// Must be called on-chain.
-    fn bump_current_if_needed(&mut self) {
-        if self.is_bump_of_current_needed() {
-            self.task_id_of_current = self
-                .task_id_of_last_created
-                .min(self.task_id_of_current + 1);
-        }
+    pub fn mark_completion(&mut self, task_id: TaskId) {
+        self.queue.retain(|&i| i != task_id);
     }
 
-    /// Check whether [`TaskQueue::task_id_of_current`] should be bumped or not.
-    ///
-    /// Must be called on-chain.
-    fn is_bump_of_current_needed(&mut self) -> bool {
-        match self.tasks.get(&self.task_id_of_current) {
-            None => true,
-            Some(current_task) => current_task.is_complete(),
-        }
+    /// Check if a task has been started, but not yet been completed.
+    pub fn is_active(&self, task_id: TaskId) -> bool {
+        self.queue.contains(&task_id)
     }
 
     /// Storage used to track the off-chain completion status of the task.
@@ -236,6 +329,28 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
     ) -> OffChainStorage<'_, TaskId, TaskId> {
         context.storage(&self.bucket_id)
     }
+}
+
+/// Add an id to a value
+#[derive(ReadWriteRPC, CreateTypeSpec)]
+pub struct WithId<T> {
+    /// Identifier
+    pub id: TaskId,
+    /// Value
+    pub value: T,
+}
+
+impl<T> WithId<T> {
+    /// Create a [`WithId`]
+    pub fn new(id: TaskId, value: T) -> Self {
+        Self { id, value }
+    }
+}
+
+/// Calculate the network cost for sending a signed transaction plus creating an interact with
+/// contract event, based on the length of rpc.
+fn gas_for_network(rpc_length: usize) -> u64 {
+    700 + 10 * rpc_length as u64
 }
 
 /// Tests for [`TaskQueue`].
@@ -251,24 +366,24 @@ mod tests {
     fn test_queue_push_complete() {
         let mut queue: TaskQueue<Empty, Empty> = TaskQueue::new(vec![1, 2, 3], 2);
 
-        assert_eq!(queue.task_id_of_current(), 0);
+        assert_eq!(queue._task_id_of_current(), 0);
 
         queue.push_task(Empty {});
-        assert_eq!(queue.task_id_of_current(), 1);
+        assert_eq!(queue._task_id_of_current(), 1);
 
-        queue.mark_completion(0, 1, Empty {});
-        queue.mark_completion(1, 1, Empty {});
-
-        queue.push_task(Empty {});
-        assert_eq!(queue.task_id_of_current(), 2);
-        queue.mark_completion(0, 2, Empty {});
-        queue.mark_completion(1, 2, Empty {});
+        queue.mark_completed_by_engine(0, 1, Empty {});
+        queue.mark_completed_by_engine(1, 1, Empty {});
 
         queue.push_task(Empty {});
-        assert_eq!(queue.task_id_of_current(), 3);
-        queue.mark_completion(0, 3, Empty {});
-        queue.mark_completion(1, 3, Empty {});
-        assert_eq!(queue.task_id_of_current(), 3);
+        assert_eq!(queue._task_id_of_current(), 2);
+        queue.mark_completed_by_engine(0, 2, Empty {});
+        queue.mark_completed_by_engine(1, 2, Empty {});
+
+        queue.push_task(Empty {});
+        assert_eq!(queue._task_id_of_current(), 3);
+        queue.mark_completed_by_engine(0, 3, Empty {});
+        queue.mark_completed_by_engine(1, 3, Empty {});
+        assert_eq!(queue._task_id_of_current(), 0);
     }
 
     /// Can push many times before beginning to complete tasks.
@@ -276,25 +391,25 @@ mod tests {
     fn test_queue_push_many_complete_many() {
         let mut queue: TaskQueue<Empty, Empty> = TaskQueue::new(vec![1, 2, 3], 2);
 
-        assert_eq!(queue.task_id_of_current(), 0);
+        assert_eq!(queue._task_id_of_current(), 0);
 
         queue.push_task(Empty {});
         queue.push_task(Empty {});
         queue.push_task(Empty {});
 
-        assert_eq!(queue.task_id_of_current(), 1);
+        assert_eq!(queue._task_id_of_current(), 1);
 
-        queue.mark_completion(0, 1, Empty {});
-        queue.mark_completion(1, 1, Empty {});
+        queue.mark_completed_by_engine(0, 1, Empty {});
+        queue.mark_completed_by_engine(1, 1, Empty {});
 
-        assert_eq!(queue.task_id_of_current(), 2);
-        queue.mark_completion(0, 2, Empty {});
-        queue.mark_completion(1, 2, Empty {});
+        assert_eq!(queue._task_id_of_current(), 2);
+        queue.mark_completed_by_engine(0, 2, Empty {});
+        queue.mark_completed_by_engine(1, 2, Empty {});
 
-        assert_eq!(queue.task_id_of_current(), 3);
-        queue.mark_completion(0, 3, Empty {});
-        queue.mark_completion(1, 3, Empty {});
-        assert_eq!(queue.task_id_of_current(), 3);
+        assert_eq!(queue._task_id_of_current(), 3);
+        queue.mark_completed_by_engine(0, 3, Empty {});
+        queue.mark_completed_by_engine(1, 3, Empty {});
+        assert_eq!(queue._task_id_of_current(), 0);
     }
 
     /// All completion data is available once all engines have been marked as completing the task.
@@ -308,11 +423,11 @@ mod tests {
 
         assert_eq!(queue.get_task(1).unwrap().all_completion_data(), None);
 
-        queue.mark_completion(0, 1, Empty {});
+        queue.mark_completed_by_engine(0, 1, Empty {});
 
         assert_eq!(queue.get_task(1).unwrap().all_completion_data(), None);
 
-        queue.mark_completion(1, 1, Empty {});
+        queue.mark_completed_by_engine(1, 1, Empty {});
 
         assert_eq!(
             queue.get_task(1).unwrap().all_completion_data(),
@@ -326,19 +441,19 @@ mod tests {
         let mut queue: TaskQueue<Empty, Empty> = TaskQueue::new(vec![1, 2, 3], 2);
 
         queue.push_task(Empty {});
-        queue.remove_task(1);
-        assert_eq!(queue.task_id_of_current(), 1);
+        queue._remove_task(1);
+        assert_eq!(queue._task_id_of_current(), 0);
 
         queue.push_task(Empty {});
-        queue.remove_task(2);
-        assert_eq!(queue.task_id_of_current(), 2);
+        queue._remove_task(2);
+        assert_eq!(queue._task_id_of_current(), 0);
 
         queue.push_task(Empty {});
-        queue.remove_task(3);
-        assert_eq!(queue.task_id_of_current(), 3);
+        queue._remove_task(3);
+        assert_eq!(queue._task_id_of_current(), 0);
 
         queue.push_task(Empty {});
         assert!(queue.get_task(4).is_some());
-        assert_eq!(queue.task_id_of_current(), 4);
+        assert_eq!(queue._task_id_of_current(), 4);
     }
 }

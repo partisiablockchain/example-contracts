@@ -28,6 +28,8 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
   void deploy() {
     contractOwnerAccount = blockchain.newAccount(2);
 
+    blockchain.addRealv1MpcNodes();
+
     byte[] initRpc = ZkMultiFunctional.initialize();
     contractAddress = blockchain.deployZkContract(contractOwnerAccount, CONTRACT_BYTES, initRpc);
 
@@ -104,8 +106,6 @@ public final class ZkMultiFunctionalTest extends JunitContractTest {
   }
 
   private ZkMultiFunctional.ContractState getState() {
-    return ZkMultiFunctional.ZkStateImmutable.deserialize(
-            blockchain.getContractState(contractAddress))
-        .openState();
+    return new ZkMultiFunctional(getStateClient(), contractAddress).getState().openState();
   }
 }

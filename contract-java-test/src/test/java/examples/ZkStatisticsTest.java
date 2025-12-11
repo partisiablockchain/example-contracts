@@ -32,6 +32,8 @@ public final class ZkStatisticsTest extends JunitContractTest {
     femaleSurveyParticipant = blockchain.newAccount(3);
     otherSurveyParticipant = blockchain.newAccount(4);
 
+    blockchain.addRealv1MpcNodes();
+
     int inputTime = 20000;
     byte[] initialize = ZkStatistics.initialize(inputTime);
 
@@ -39,11 +41,7 @@ public final class ZkStatisticsTest extends JunitContractTest {
     // The time is assigned and then increased by 1, so subtract 1 to get the deadline time.
     long blockProductionTime = blockchain.getBlockProductionTime() - 1;
 
-    ZkStatistics.StatisticsContractState state =
-        ZkStatistics.ZkStateImmutable.deserialize(blockchain.getContractState(statistics))
-            .openState();
-
-    Assertions.assertThat(state.deadline()).isEqualTo(blockProductionTime + inputTime);
+    Assertions.assertThat(openState().deadline()).isEqualTo(blockProductionTime + inputTime);
   }
 
   /** The owner can compute the statistics of multiple inputs. */
@@ -71,17 +69,13 @@ public final class ZkStatisticsTest extends JunitContractTest {
     byte[] computeStatistics = ZkStatistics.computeStatistics();
     blockchain.sendAction(owner, statistics, computeStatistics);
 
-    ZkStatistics.StatisticsContractState state =
-        ZkStatistics.ZkStateImmutable.deserialize(blockchain.getContractState(statistics))
-            .openState();
-
     ZkStatistics.StatisticsResult expectedOutput =
         new ZkStatistics.StatisticsResult(
             new ZkStatistics.AgeCounts(0, 2, 0, 1),
             new ZkStatistics.GenderCounts(1, 1, 1),
             new ZkStatistics.ColorCounts(0, 0, 3, 0));
 
-    Assertions.assertThat(state.result()).isEqualTo(expectedOutput);
+    Assertions.assertThat(openState().result()).isEqualTo(expectedOutput);
   }
 
   /** A user cannot add an input after the deadline. */
@@ -169,5 +163,9 @@ public final class ZkStatisticsTest extends JunitContractTest {
 
   byte[] secretInputRpc() {
     return new byte[] {0x40};
+  }
+
+  private ZkStatistics.StatisticsContractState openState() {
+    return new ZkStatistics(getStateClient(), statistics).getState().openState();
   }
 }

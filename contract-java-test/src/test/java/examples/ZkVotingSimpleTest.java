@@ -7,6 +7,7 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.junit.exceptions.SecretInputFailureException;
+import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.partisiablockchain.language.testenvironment.zk.node.task.VariableId;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
@@ -30,6 +31,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
 
   private BlockchainAddress votingSimple;
 
+  private RealNodeClusterInteractions zkNodes;
+
   /** Deploy ZK voting contract. */
   @ContractTest
   void deploy() {
@@ -40,15 +43,13 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
     account5 = blockchain.newAccount(6);
     account6 = blockchain.newAccount(7);
 
+    zkNodes = blockchain.addRealv1MpcNodes();
+
     byte[] initRpc = ZkVotingSimple.initialize(10000);
 
     votingSimple = blockchain.deployZkContract(account1, VOTING_SIMPLE_BYTES, initRpc);
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state).isNotNull();
+    Assertions.assertThat(votingState()).isNotNull();
   }
 
   /** The votes are counted correctly after the voting has ended. */
@@ -72,11 +73,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
 
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(1, 5, false));
+    Assertions.assertThat(votingState().voteResult())
+        .isEqualTo(new ZkVotingSimple.VoteResult(1, 5, false));
   }
 
   /** A proposal passes when there are strictly more "Yes"-votes than "No"-votes. */
@@ -98,11 +96,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
     byte[] startVoteCount = ZkVotingSimple.startVoteCounting();
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(5, 1, true));
+    Assertions.assertThat(votingState().voteResult())
+        .isEqualTo(new ZkVotingSimple.VoteResult(5, 1, true));
   }
 
   /** A proposal is rejected when the majority of the counted votes are "No"-votes. */
@@ -124,11 +119,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
     byte[] startVoteCount = ZkVotingSimple.startVoteCounting();
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(2, 4, false));
+    Assertions.assertThat(votingState().voteResult())
+        .isEqualTo(new ZkVotingSimple.VoteResult(2, 4, false));
   }
 
   /** The proposal fails if the voting ends in a draw. */
@@ -148,11 +140,8 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
     byte[] startVoteCount = ZkVotingSimple.startVoteCounting();
     blockchain.sendAction(account1, votingSimple, startVoteCount);
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state.voteResult()).isEqualTo(new ZkVotingSimple.VoteResult(2, 2, false));
+    Assertions.assertThat(votingState().voteResult())
+        .isEqualTo(new ZkVotingSimple.VoteResult(2, 2, false));
   }
 
   /** A user cannot cast a vote after the voting deadline has passed. */
@@ -199,11 +188,7 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
         .isInstanceOf(ActionFailureException.class)
         .hasMessageContaining("Vote counting cannot start before specified starting time");
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-
-    Assertions.assertThat(state.voteResult()).isNull();
+    Assertions.assertThat(votingState().voteResult()).isNull();
   }
 
   /** A user cannot start the vote count before the result of the vote has been calculated. */
@@ -231,10 +216,7 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("Vote counting must start from Waiting state, but was Calculating");
 
-    ZkVotingSimple.ContractState state =
-        ZkVotingSimple.ZkStateImmutable.deserialize(blockchain.getContractState(votingSimple))
-            .openState();
-    Assertions.assertThat(state.voteResult()).isNull();
+    Assertions.assertThat(votingState().voteResult()).isNull();
   }
 
   /** A user cannot call for a recount of the votes for a proposal that has been decided. */
@@ -253,6 +235,10 @@ public final class ZkVotingSimpleTest extends JunitContractTest {
             () -> blockchain.sendAction(account1, votingSimple, startVoteCount))
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("Vote counting must start from Waiting state, but was Done");
+  }
+
+  private ZkVotingSimple.ContractState votingState() {
+    return new ZkVotingSimple(getStateClient(), votingSimple).getState().openState();
   }
 
   byte[] secretInputRpc() {

@@ -259,7 +259,7 @@ fn update_upload(ctx: &mut OffChainContext, state: &ContractState) -> Option<()>
 }
 
 /// Stoage for shares that have been committed to.
-fn storage_commit_to_share(ctx: &mut OffChainContext) -> OffChainStorage<Hash, Vec<u8>> {
+fn storage_commit_to_share(ctx: &mut OffChainContext) -> OffChainStorage<'_, Hash, Vec<u8>> {
     ctx.storage(BUCKET_ID_COMMITMENTS_TO_SHARE)
 }
 

@@ -1,5 +1,10 @@
 mia-game/src/lib.rs
 mia-game/src/zk_compute.rs
+off-chain-fetch-exchange-rate/src/lib.rs       # junit does not support coverage for off-chain code
+off-chain-fetch-exchange-rate/src/parsing.rs   # junit does not support coverage for off-chain code
+off-chain-mpc-signing/src/off_chain.rs                 # junit does not support coverage for off-chain code
+off-chain-mpc-signing/src/replicated_secret_sharing.rs # junit does not support coverage for off-chain code
+off-chain-mpc-signing/src/task_queue.rs                # junit does not support coverage for off-chain code
 off-chain-secret-sharing/src/lib.rs            # junit does not support coverage for off-chain code
 off-chain-secret-sharing/src/signatures.rs     # junit does not support coverage for off-chain code
 off-chain-secret-sharing/src/http_router.rs    # junit does not support coverage for off-chain code

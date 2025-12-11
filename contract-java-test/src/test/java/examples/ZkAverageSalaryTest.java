@@ -10,6 +10,7 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.junit.exceptions.SecretInputFailureException;
+import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
 import java.nio.file.Path;
@@ -30,6 +31,8 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
   private BlockchainAddress account6;
   private BlockchainAddress averageSalary;
 
+  private RealNodeClusterInteractions zkNodes;
+
   /** Deploys the contract. */
   @ContractTest
   public void deployZkContract() {
@@ -40,15 +43,13 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     account5 = blockchain.newAccount(6);
     account6 = blockchain.newAccount(7);
 
+    zkNodes = blockchain.addRealv1MpcNodes();
+
     byte[] initialize = AverageSalary.initialize();
 
     averageSalary = blockchain.deployZkContract(account1, CONTRACT_BYTES, initialize);
 
-    AverageSalary.ContractState state =
-        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
-            .openState();
-
-    assertThat(state.administrator()).isEqualTo(account1);
+    assertThat(openState().administrator()).isEqualTo(account1);
   }
 
   /** A user can input their salary. */
@@ -84,11 +85,7 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     byte[] startCompute = AverageSalary.computeAverageSalary();
     blockchain.sendAction(account1, averageSalary, startCompute);
 
-    AverageSalary.ContractState state =
-        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
-            .openState();
-
-    assertThat(state.averageSalaryResult())
+    assertThat(openState().averageSalaryResult())
         .isEqualTo((100000 + 10000 + 3000 + 15000 + 23300 + 40150) / 6);
   }
 
@@ -98,11 +95,7 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
     byte[] startCompute = AverageSalary.computeAverageSalary();
     blockchain.sendAction(account1, averageSalary, startCompute);
 
-    AverageSalary.ContractState state =
-        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
-            .openState();
-
-    assertThat(state.averageSalaryResult()).isEqualTo((100000 + 10000 + 0) / 3);
+    assertThat(openState().averageSalaryResult()).isEqualTo((100000 + 10000 + 0) / 3);
   }
 
   /** Each employee is only allowed to submit their salary once. */
@@ -121,11 +114,7 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
   /** Only the admin is allowed to start the computation. */
   @ContractTest(previous = "sendSecretInputs")
   void onlyAdministratorCanStartComputation() {
-    AverageSalary.ContractState state =
-        AverageSalary.ZkStateImmutable.deserialize(blockchain.getContractState(averageSalary))
-            .openState();
-
-    assertThat(state.administrator()).isNotEqualTo(account2);
+    assertThat(openState().administrator()).isNotEqualTo(account2);
 
     byte[] startCompute = AverageSalary.computeAverageSalary();
 
@@ -184,5 +173,9 @@ public final class ZkAverageSalaryTest extends JunitContractTest {
 
   byte[] secretInputRpc() {
     return new byte[] {0x40};
+  }
+
+  private AverageSalary.ContractState openState() {
+    return new AverageSalary(getStateClient(), averageSalary).getState().openState();
   }
 }
