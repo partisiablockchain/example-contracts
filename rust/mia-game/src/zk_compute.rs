@@ -21,7 +21,7 @@ pub fn compute_dice_throw() -> RandomnessInput {
     };
 
     for variable_id in secret_variable_ids() {
-        let mut raw_contribution: RandomnessInput = load_sbi::<RandomnessInput>(variable_id);
+        let raw_contribution: RandomnessInput = load_sbi::<RandomnessInput>(variable_id);
 
         let d1_reduced = reduce_contribution(raw_contribution.d1);
         let d2_reduced = reduce_contribution(raw_contribution.d2);

@@ -116,7 +116,7 @@ pub fn initialize(_ctx: ContractContext, engines: Vec<EngineConfig>) -> Contract
     state
 }
 
-/// Consumres and returns the latest piece of [`Randomness`].
+/// Consumes and returns the latest piece of [`Randomness`].
 ///
 /// ## Return Value
 ///
@@ -216,8 +216,15 @@ pub fn upload_randomness(
 /// Solves the off-chain tasks that are currently in the task queues.
 #[off_chain_on_state_change]
 pub fn off_chain_on_state_update(mut ctx: OffChainContext, state: ContractState) {
-    update_commitment(&mut ctx, &state);
-    update_upload(&mut ctx, &state);
+    if engine_is_assigned_to_contract(&mut ctx, &state) {
+        update_commitment(&mut ctx, &state);
+        update_upload(&mut ctx, &state);
+    }
+}
+
+/// Checks that the off-chain engine is assigned to the specified on-chain contract.
+fn engine_is_assigned_to_contract(ctx: &mut OffChainContext, state: &ContractState) -> bool {
+    state.engine_index(&ctx.execution_engine_address).is_some()
 }
 
 /// Checks the on-chain state for whether there is an unresolved commitment task and solves it.

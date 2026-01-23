@@ -7,18 +7,13 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
-import java.nio.file.Path;
 import java.util.Locale;
 import org.assertj.core.api.Assertions;
 
 /** Test suite for the DNS contract. */
 public final class DnsTest extends JunitContractTest {
 
-  private static final ContractBytes DNS_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns_runner"));
+  public static final ContractBytes DNS_CONTRACT_BYTES = ContractBytesLoader.forContract("dns");
 
   private BlockchainAddress voter;
   private BlockchainAddress admin;

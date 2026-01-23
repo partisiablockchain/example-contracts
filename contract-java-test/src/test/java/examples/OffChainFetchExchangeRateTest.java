@@ -13,7 +13,6 @@ import com.partisiablockchain.language.testenvironment.executionengine.TestExecu
 import com.secata.tools.immutable.Bytes;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
@@ -27,11 +26,8 @@ public final class OffChainFetchExchangeRateTest extends JunitContractTest {
   private TestExecutionEngine executionEngine;
   private BlockchainAddress engineAddress;
 
-  private static final String CONTRACT_DIR = "../rust/target/wasm32-unknown-unknown/release";
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of(CONTRACT_DIR + "/off_chain_fetch_exchange_rate.pbc"),
-          Path.of(CONTRACT_DIR + "/off_chain_fetch_exchange_rate_runner"));
+      ContractBytesLoader.forContract("off_chain_fetch_exchange_rate");
 
   private BlockchainAddress contractAddress;
   private BlockchainAddress sender;

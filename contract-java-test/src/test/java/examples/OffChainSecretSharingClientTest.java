@@ -16,7 +16,6 @@ import examples.client.SecretSharingClient;
 import examples.client.XorSecretShares;
 import java.math.BigInteger;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 
@@ -25,9 +24,7 @@ public final class OffChainSecretSharingClientTest extends JunitContractTest {
 
   /** Contract bytes for the {@link OffChainSecretSharing} contract. */
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing_runner"));
+      ContractBytesLoader.forContract("off_chain_secret_sharing");
 
   /** Addresses of the engines. */
   private List<OffChainSecretSharing.NodeConfig> engineConfigs;

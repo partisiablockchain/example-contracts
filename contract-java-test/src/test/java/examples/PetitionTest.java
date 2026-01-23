@@ -6,17 +6,13 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /** Test suite for the Petition smart contract. */
 public final class PetitionTest extends JunitContractTest {
 
   /** {@link Petition} contract bytes. */
-  private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/petition.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/petition_runner"));
+  private static final ContractBytes CONTRACT_BYTES = ContractBytesLoader.forContract("petition");
 
   private BlockchainAddress petition;
   private BlockchainAddress owner;

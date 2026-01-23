@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,9 +35,7 @@ public final class ZkClassificationTest extends JunitContractTest {
   private RealNodeClusterInteractions zkNodes;
 
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_classification.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_classification_runner"));
+      ContractBytesLoader.forContract("zk_classification");
 
   // scaling between fixed points to ensure precision in value/threshold comparison
   private final int[] conversion = new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};

@@ -8,20 +8,15 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.testenvironment.TxExecution;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /** This class contains a test suite for the multi-voting smart contract. */
 public final class MultiVotingTest extends JunitContractTest {
   private static final ContractBytes MULTI_VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/multi_voting_contract_runner"));
+      ContractBytesLoader.forContract("multi_voting_contract");
 
   private static final ContractBytes VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting_runner"));
+      ContractBytesLoader.forContract("voting");
 
   private BlockchainAddress multiVotingOwner;
   private BlockchainAddress multiVoting;

@@ -10,7 +10,6 @@ import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.junit.exceptions.SecretInputFailureException;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,10 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 public final class MiaGameTest extends JunitContractTest {
 
   /** {@link MiaGame} contract bytes. */
-  private static final ContractBytes MIA_CONTRACT =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/mia_game_runner"));
+  private static final ContractBytes MIA_CONTRACT = ContractBytesLoader.forContract("mia_game");
 
   private static final DiceThrowPoints THIRTY_TWO =
       new DiceThrowPoints(new MiaGame.DiceThrow((byte) 1, (byte) 2), 3);

@@ -11,16 +11,13 @@ import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterIn
 import com.partisiablockchain.language.testenvironment.zk.node.task.VariableId;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /** Test the Zero Knowledge Simple Voting Contract. */
 public final class ZkVotingSimpleTest extends JunitContractTest {
 
   private static final ContractBytes VOTING_SIMPLE_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_voting_simple_runner"));
+      ContractBytesLoader.forContract("zk_voting_simple");
 
   private BlockchainAddress account1;
   private BlockchainAddress account2;

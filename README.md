@@ -60,7 +60,7 @@ The **ZK (Multi-Party Computation)** contracts are:
 
 - [`zk-average-salary`](./rust/zk-average-salary): Implements an algorithm for
   determining the average of several users' input values in secret.
-- [`zk-second-price-auction`](./rust/zk-second-price-auction): Implements
+- [`zk-second-price-auction`](./rust/zk-second-price-auction-external-ids): Implements
   a second-price auction, such that users can bid in secret. Only the second
   highest bid is revealed.
 - [`mia-game`](./rust/mia-game): Implements the rules of the Mia game.

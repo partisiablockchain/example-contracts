@@ -9,15 +9,11 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
-import java.nio.file.Path;
 import java.util.HexFormat;
 
 /** Test suite for the Nickname contract. */
 public final class NicknameTest extends JunitContractTest {
-  public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/nickname.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/nickname_runner"));
+  public static final ContractBytes CONTRACT_BYTES = ContractBytesLoader.forContract("nickname");
   private BlockchainAddress account;
   private BlockchainAddress nicknameAddress;
   private Nickname nicknameContract;

@@ -301,7 +301,8 @@ public final class SecretSharingClient<SecretSharesT extends SecretShares> {
             """
             Engine number %d did not return the correct secret-share.
             On-chain commitment: %s
-            Received share's hash: %s%n""",
+            Received share's hash: %s
+            """,
             i, expectedCommitments.get(i), commitment);
         filteredShares.add(null);
       }

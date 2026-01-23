@@ -19,7 +19,6 @@ import com.secata.tools.immutable.Bytes;
 import examples.client.SecretShares;
 import examples.client.SecretSharingClient;
 import java.math.BigInteger;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
@@ -29,9 +28,7 @@ public final class OffChainSecretSharingTest extends JunitContractTest {
 
   /** Contract bytes for the {@link OffChainSecretSharing} contract. */
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_secret_sharing_runner"));
+      ContractBytesLoader.forContract("off_chain_secret_sharing");
 
   /** Private keys for each of the engines. */
   public static final List<KeyPair> ENGINE_KEYS =

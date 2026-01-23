@@ -8,7 +8,6 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.Previous;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 import java.util.Random;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -21,9 +20,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 public final class ZkFileShareTest extends JunitContractTest {
 
   private static final ContractBytes FILE_SHARE_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_file_share_runner"));
+      ContractBytesLoader.forContract("zk_file_share");
 
   private BlockchainAddress contractOwner;
   private BlockchainAddress initialUser;

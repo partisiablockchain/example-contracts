@@ -7,16 +7,12 @@ import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /** A test suite for the Zk statistics smart contract. */
 public final class ZkStatisticsTest extends JunitContractTest {
 
-  static final ContractBytes STATISTIC_CONTRACT =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/zk_statistics_runner"));
+  static final ContractBytes STATISTIC_CONTRACT = ContractBytesLoader.forContract("zk_statistics");
 
   BlockchainAddress statistics;
   BlockchainAddress owner;

@@ -10,7 +10,6 @@ import com.partisiablockchain.language.junit.FuzzyState;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.math.Unsigned256;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /** {@link PingContract} testing. */
@@ -18,9 +17,7 @@ public final class PingTest extends JunitContractTest {
 
   /** {@link PingContract} contract bytes. */
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/ping_contract_runner"));
+      ContractBytesLoader.forContract("ping_contract");
 
   private static final long CONTRACT_STORAGE_FEE = 1;
 

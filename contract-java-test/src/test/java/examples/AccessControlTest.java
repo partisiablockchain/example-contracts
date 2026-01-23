@@ -8,14 +8,11 @@ import com.partisiablockchain.language.abicodegen.AccessControl;
 import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
-import java.nio.file.Path;
 
 /** Tests. */
 public final class AccessControlTest extends JunitContractTest {
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/access_control.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/access_control_runner"));
+      ContractBytesLoader.forContract("access_control");
   private BlockchainAddress account1;
   private BlockchainAddress account2;
   private BlockchainAddress account3;

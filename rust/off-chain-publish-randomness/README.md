@@ -4,7 +4,7 @@ Example contract for generating and publishing randomness on-chain.
 
 This contract demonstrates how to:
 
-- Generate randomn data in an off-chain component.
+- Generate random data in an off-chain component.
 - Securely upload data from an off-chain component to the on-chain
   smart-contract, by forcing off-chain components to commit to their values,
   because uploading.
@@ -55,7 +55,7 @@ sequenceDiagram
 
 ## Threat model
 
-At least one engine is honest and sends a produces truly random byte-sequence.
+At least one engine is honest and sends a truly random byte-sequence.
 This is enough for the finalized randomness to be truly random, even if all
 other engines are malicous and collude.
 
@@ -67,8 +67,8 @@ modified to provide improved confidentiality for the generated randomness.
 
 Such extensions include:
 
-- Permissioned Off-chain HTTP endpoint allowing users access to the randomness,
+- A permissioned off-chain HTTP endpoint allowing users access to the randomness,
   without publishing it on-chain.
-- Alternative flow that allows contracts to commission the randomness. This is
+- An alternative flow that allows contracts to commission the randomness. This is
   especially important for on-chain smart-contracts that should prevent users
   from anticipating the randomness.
