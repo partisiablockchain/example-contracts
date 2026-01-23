@@ -8,7 +8,6 @@ import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
@@ -17,13 +16,7 @@ import org.assertj.core.api.Assertions;
 public final class ZkSecondPriceAuctionExternalIdsTest extends JunitContractTest {
 
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/"
-                  + "zk_second_price_auction_external_ids.pbc"),
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/"
-                  + "zk_second_price_auction_external_ids_runner"));
+      ContractBytesLoader.forContract("zk_second_price_auction_external_ids");
 
   private List<BlockchainAddress> accounts;
   private BlockchainAddress owner;

@@ -6,7 +6,6 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
-import java.nio.file.Path;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 
@@ -14,9 +13,7 @@ import org.assertj.core.api.Assertions;
 public final class VotingTest extends JunitContractTest {
 
   private static final ContractBytes VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting_runner"));
+      ContractBytesLoader.forContract("voting");
   private BlockchainAddress voter1;
   private BlockchainAddress voter2;
   private BlockchainAddress voter3;

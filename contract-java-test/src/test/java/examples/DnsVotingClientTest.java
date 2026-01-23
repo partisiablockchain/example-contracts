@@ -8,30 +8,20 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
 
 /** Test suite for the DNS voting client contract. */
 public final class DnsVotingClientTest extends JunitContractTest {
-  private static final ContractBytes DNS_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns_runner"));
+
+  private static final ContractBytes DNS_CONTRACT_BYTES = ContractBytesLoader.forContract("dns");
 
   private static final ContractBytes DNS_VOTING_CLIENT_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns_voting_client.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns_voting_client.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/dns_voting_client_runner"));
+      ContractBytesLoader.forContract("dns_voting_client");
 
   private static final ContractBytes VOTING_CONTRACT_BYTES =
-      ContractBytes.fromPaths(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.wasm"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting.abi"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/voting_runner"));
+      ContractBytesLoader.forContract("voting");
 
   private BlockchainAddress voter;
   private BlockchainAddress admin;

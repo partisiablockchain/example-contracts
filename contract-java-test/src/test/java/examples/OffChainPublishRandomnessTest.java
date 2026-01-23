@@ -7,9 +7,9 @@ import com.partisiablockchain.language.junit.ContractBytes;
 import com.partisiablockchain.language.junit.ContractTest;
 import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.TestBlockchain;
+import com.partisiablockchain.language.testenvironment.TxExecution;
 import com.partisiablockchain.language.testenvironment.executionengine.TestExecutionEngine;
 import java.math.BigInteger;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
@@ -20,10 +20,7 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
 
   /** Contract bytes for the {@link OffChainPublishRandomness} contract. */
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_publish_randomness.pbc"),
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/off_chain_publish_randomness_runner"));
+      ContractBytesLoader.forContract("off_chain_publish_randomness");
 
   /** Private keys for each of the engines. */
   private static final List<KeyPair> ENGINE_KEYS = OffChainSecretSharingTest.ENGINE_KEYS;
@@ -68,7 +65,7 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
   /** Commit tasks triggers engines commiting to randomness and then later uploading shares. */
   @ContractTest(previous = "setup")
   void enginesSendRandomShares() {
-    setupEngines(4);
+    setupEngines(ENGINE_KEYS.size());
     assertCommitAndUploadPerformed(1, INITIAL_RANDOM_DATA_SHARES);
   }
 
@@ -93,9 +90,9 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
     assertCommitAndUploadPerformed(1, INITIAL_RANDOM_DATA_SHARES);
   }
 
-  /** Non-engine cannot upload randomness. */
+  /** Address not assigned to the contract cannot upload randomness. */
   @ContractTest(previous = "enginesSendRandomShares")
-  void nonEngineCannotUploadRandomness() {
+  void unassignedAddressCannotUploadRandomness() {
     Assertions.assertThatCode(
             () ->
                 blockchain.sendAction(
@@ -103,6 +100,26 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
                     contractAddress,
                     OffChainPublishRandomness.uploadRandomness(1, new byte[0])))
         .hasMessageContaining("Caller is not one of the engines");
+  }
+
+  /** Engine assigned to contract does try to upload randomness. */
+  @ContractTest(previous = "setup")
+  void assignedEngineDoesNotUploadRandomness() {
+    TestExecutionEngine assignedEngine =
+        blockchain.addExecutionEngine(p -> true, ENGINE_KEYS.get(0));
+    List<TxExecution> assignedTxs = assignedEngine.runOffChainStateChange(this.contractAddress);
+    Assertions.assertThat(assignedTxs.size()).isEqualTo(1);
+  }
+
+  /** Engine not assigned to contract does not try to upload randomness. */
+  @ContractTest(previous = "setup")
+  void unassignedEngineDoesNotUploadRandomness() {
+    KeyPair unassignedKeyPair = new KeyPair();
+    TestExecutionEngine unassignedEngine =
+        blockchain.addExecutionEngine(p -> true, unassignedKeyPair);
+
+    List<TxExecution> unassignedTxs = unassignedEngine.runOffChainStateChange(this.contractAddress);
+    Assertions.assertThat(unassignedTxs.size()).isEqualTo(0);
   }
 
   /** Cannot consume randomness if nothing is available. */
@@ -121,7 +138,7 @@ public final class OffChainPublishRandomnessTest extends JunitContractTest {
    */
   @ContractTest(previous = "setup")
   void contractWaitsForAllEnginesToUploadCommit() {
-    setupEngines(3);
+    setupEngines(ENGINE_KEYS.size() - 1);
     assertPartialCommitments();
     assertNoUploadTasks();
   }

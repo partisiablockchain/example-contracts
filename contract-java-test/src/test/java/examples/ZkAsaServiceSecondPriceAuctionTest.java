@@ -14,7 +14,6 @@ import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.assertj.core.api.Assertions;
@@ -25,13 +24,7 @@ import org.bouncycastle.util.encoders.Hex;
 public final class ZkAsaServiceSecondPriceAuctionTest extends JunitContractTest {
 
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/"
-                  + "zk_as_a_service_second_price_auction.pbc"),
-          Path.of(
-              "../rust/target/wasm32-unknown-unknown/release/"
-                  + "zk_as_a_service_second_price_auction_runner"));
+      ContractBytesLoader.forContract("zk_as_a_service_second_price_auction");
 
   private static final String ETH_CONTRACT_ADDRESS = "93b080860e7fb5745d11f081cd15556e1d72a15d";
 

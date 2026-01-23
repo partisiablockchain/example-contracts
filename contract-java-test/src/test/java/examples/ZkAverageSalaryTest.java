@@ -13,15 +13,12 @@ import com.partisiablockchain.language.junit.exceptions.SecretInputFailureExcept
 import com.partisiablockchain.language.testenvironment.zk.node.RealNodeClusterInteractions;
 import com.secata.stream.BitOutput;
 import com.secata.stream.CompactBitArray;
-import java.nio.file.Path;
 
 /** Test suite for the ZkAverageSalary contract. */
 public final class ZkAverageSalaryTest extends JunitContractTest {
 
   private static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/average_salary_runner"));
+      ContractBytesLoader.forContract("average_salary");
 
   private BlockchainAddress account1;
   private BlockchainAddress account2;

@@ -11,6 +11,31 @@ will then perform an MPC protocol resulting in the signature of the message bein
 
 This contract works with three nodes and is secure as long as at most one node is malicious.
 
+## Usage
+
+1. [Run 3 execution
+   engines](https://partisiablockchain.gitlab.io/documentation/node-operations/run-an-execution-engine.html)
+2. [Compile and deploy the
+   contract](https://partisiablockchain.gitlab.io/documentation/smart-contracts/compile-and-deploy-contracts.html).
+3. Specify the engine addresses, and configure the preprocessing stage. Higher
+   values in the preprocessing config results in a slower upstart, but higher
+   signing throughput.
+4. The contracts and engines will automatically begin key-generation, once
+   deployed. Wait until three `upload pub key share` actions has been made by
+   the engines, which indicate the completion of the public key creation. The
+   generated public key is available at the state path:
+   `signing_computation_state > public_key`.
+5. Thereafter the contract automatically begins pre-processing. Wait until
+   three `mul check two report` actions has been made, which indicates the
+   completion of the pre-processing stage. Used and created pre-processing
+   materials can be monitored at the state path:
+   `signing_computation_state > preprocess_state`.
+6. You can now make `sign message` interactions. After making such an
+   interaction wait until three `sign report` actions has been made, which
+   indicates the completion of a signature. The resulting signature will be
+   present in the state at the state path:
+   `signing_computation_state > signing_information > map > [id] > signature`
+
 ## Design
 
 The MPC protocol can be split into three phases
@@ -19,7 +44,7 @@ The MPC protocol can be split into three phases
 2. Preprocessing
 3. Signing
 
-### Setup
+### Setup (Key Generation)
 
 The goal of the setup phase is for the engines to exchange keys with each other, and to generate the signing key secret
 shares.
@@ -65,3 +90,27 @@ x = x1 + x2 + x3.
 
 I.e. each share is replicated between two parties in such a way that no single party knows all the shares, but any two
 nodes can reconstruct the share.
+
+## Security Guarantees
+
+The security guarantees can be described based on whether confidentiality (of
+the secret key), integrity (of the produced signatures) and availability (of
+the operations) is preserved if a given number of nodes has been compromised.
+
+**Confidentiality/Integrity**: At most 1/3 nodes may be malicious.
+
+**Availability** depends upon the operation:
+
+- Key generation: 0/3 nodes
+- Preprocessing: 0/3 nodes
+- Signing: 1/3 nodes
+
+In other words: If precisely 1 node is malicious (or non-functional) they may
+prevent the contract from performing the setup and preprocessing operations.
+This malicious node cannot compromise the secret key, it cannot produce
+counterfeit signatures, and it cannot prevent the signing operation from
+running. All preprocessing steps are validated, such that attempts by a single
+node to manipulate the preprocessing results ends in failure.
+
+The security guarantees break down completely if 2 or more nodes are
+malicious.

@@ -1,7 +1,7 @@
 # Zero Knowledge: Second-Price Auction as a Service
 
 **This version of the contract exists as a layer 2 service for Ethereum.
-Contrast with the [pure PBC implementation](../zk-second-price-auction).**
+Contrast with the [pure PBC implementation](../zk-second-price-auction-external-ids).**
 
 Smart contract implementing the simple Second Price Auction (also known as a [Vickrey auction](https://en.wikipedia.org/wiki/Vickrey_auction)).
 

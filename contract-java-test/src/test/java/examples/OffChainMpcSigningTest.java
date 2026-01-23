@@ -18,7 +18,6 @@ import com.partisiablockchain.language.testenvironment.TxExecution;
 import com.partisiablockchain.language.testenvironment.executionengine.TestExecutionEngine;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -31,9 +30,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
 
   /** Contract bytes for the {@link OffChainMpcSigning} contract. */
   public static final ContractBytes CONTRACT_BYTES =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_mpc_signing.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/off_chain_mpc_signing_runner"));
+      ContractBytesLoader.forContract("off_chain_mpc_signing");
 
   /** Private keys for each of the engines. */
   private static final List<KeyPair> ENGINE_KEYS =

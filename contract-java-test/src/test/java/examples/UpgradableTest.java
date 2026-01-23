@@ -11,7 +11,6 @@ import com.partisiablockchain.language.junit.JunitContractTest;
 import com.partisiablockchain.language.junit.exceptions.ActionFailureException;
 import com.partisiablockchain.language.testenvironment.dependencies.GovernanceId;
 import com.partisiablockchain.language.testenvironment.dependencies.GovernanceLoader;
-import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 
 /**
@@ -24,21 +23,15 @@ public final class UpgradableTest extends JunitContractTest {
 
   /** {@link UpgradableV1} contract bytes. * */
   private static final ContractBytes CONTRACT_BYTES_V1 =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v1.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v1_runner"));
+      ContractBytesLoader.forContract("upgradable_v1");
 
   /** {@link UpgradableV2} contract bytes. * */
   private static final ContractBytes CONTRACT_BYTES_V2 =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v2.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v2_runner"));
+      ContractBytesLoader.forContract("upgradable_v2");
 
   /** {@link UpgradableV3} contract bytes. * */
   private static final ContractBytes CONTRACT_BYTES_V3 =
-      ContractBytes.fromPbcFile(
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v3.pbc"),
-          Path.of("../rust/target/wasm32-unknown-unknown/release/upgradable_v3_runner"));
+      ContractBytesLoader.forContract("upgradable_v3");
 
   private BlockchainAddress upgrader;
   private BlockchainAddress upgradableContract;

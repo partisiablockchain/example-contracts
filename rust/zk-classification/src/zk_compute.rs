@@ -43,13 +43,13 @@ pub struct Sample {
 ///
 #[zk_compute(shortname = 0x61)]
 pub fn evaluate(model_id: SecretVarId, sample_id: SecretVarId) -> Sbu1 {
-    let mut model: Model = load_sbi::<Model>(model_id);
+    let model: Model = load_sbi::<Model>(model_id);
     let internal_vertices: [InternalVertex; 7] = model.internals;
 
-    let mut model: Model = load_sbi::<Model>(model_id);
+    let model: Model = load_sbi::<Model>(model_id);
     let leaf_vertices: [LeafVertex; 8] = model.leaves;
 
-    let mut sample: Sample = load_sbi::<Sample>(sample_id);
+    let sample: Sample = load_sbi::<Sample>(sample_id);
 
     let vertex_evaluation: [Sbu1; 7] = evaluate_internal_vertices(internal_vertices, sample.values);
     let path_evaluation: [Sbu1; 8] = evaluate_paths(vertex_evaluation);
