@@ -12,7 +12,7 @@ import org.assertj.core.api.Assertions;
 /** Test suite for the Voting contract. */
 public final class VotingTest extends JunitContractTest {
 
-  private static final ContractBytes VOTING_CONTRACT_BYTES =
+  public static final ContractBytes VOTING_CONTRACT_BYTES =
       ContractBytesLoader.forContract("voting");
   private BlockchainAddress voter1;
   private BlockchainAddress voter2;

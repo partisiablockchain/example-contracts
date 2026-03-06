@@ -12,9 +12,6 @@ pub type TaskId = u32;
 /// Identifier of an engine.
 pub type EngineIndex = u32;
 
-/// Gas used to send report_completion reports.
-const GAS_FOR_REPORT_COMPLETION: u64 = 10_000;
-
 /// Task in the queue.
 ///
 /// Tasks are only treated as completed if all engines have responded.
@@ -178,14 +175,15 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
         task: Task<DefinitionT, CompletionT>,
         rpc_generator: RpcGeneratorT,
         completion: CompletionT,
+        gas_for_completion: u64,
     ) where
         RpcGeneratorT: FnOnce(TaskId, CompletionT) -> Vec<u8>,
     {
-        context.send_transaction_to_contract(
-            rpc_generator(task.id(), completion),
-            GAS_FOR_REPORT_COMPLETION,
-        );
-
+        context
+            .call_contract(rpc_generator(task.id(), completion))
+            .with_transport_fee_from_rpc()
+            .with_additional_gas(gas_for_completion)
+            .send();
         self.completion_status_storage(context)
             .insert(task.id(), task.id());
     }

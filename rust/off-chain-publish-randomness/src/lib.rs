@@ -227,6 +227,9 @@ fn engine_is_assigned_to_contract(ctx: &mut OffChainContext, state: &ContractSta
     state.engine_index(&ctx.execution_engine_address).is_some()
 }
 
+const CPU_FEE_COMMIT_TO_RANDOMNESS: u64 = 1250;
+const CPU_FEE_UPLOAD_RANDOMNESS: u64 = 1250;
+
 /// Checks the on-chain state for whether there is an unresolved commitment task and solves it.
 ///
 /// This involves generating the randomness, and then sending the commitment to the contract.
@@ -239,9 +242,13 @@ fn update_commitment(ctx: &mut OffChainContext, state: &ContractState) {
     let commitment = Hash::digest(&randomness);
     storage_commit_to_share(ctx).insert(commitment.clone(), randomness);
 
-    state
-        .commit_queue
-        .report_completion(ctx, uncompleted, commit_to_randomness::rpc, commitment);
+    state.commit_queue.report_completion(
+        ctx,
+        uncompleted,
+        commit_to_randomness::rpc,
+        commitment,
+        CPU_FEE_COMMIT_TO_RANDOMNESS,
+    );
 }
 
 /// Checks the on-chain state for whether there is an unresolved upload task, and solves it.
@@ -256,9 +263,13 @@ fn update_upload(ctx: &mut OffChainContext, state: &ContractState) -> Option<()>
     let commitment: Hash = uncompleted.definition().commitments[engine_index as usize].clone();
     let randomness: Randomness = storage_commit_to_share(ctx).get(&commitment)?;
 
-    state
-        .upload_queue
-        .report_completion(ctx, uncompleted, upload_randomness::rpc, randomness);
+    state.upload_queue.report_completion(
+        ctx,
+        uncompleted,
+        upload_randomness::rpc,
+        randomness,
+        CPU_FEE_UPLOAD_RANDOMNESS,
+    );
 
     storage_commit_to_share(ctx).remove(&commitment);
 

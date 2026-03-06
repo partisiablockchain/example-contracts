@@ -43,9 +43,10 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   private List<TestExecutionEngine> engines;
 
   private final KeyPair ownerKey = new KeyPair(BigInteger.TWO);
-  private final KeyPair senderKey = new KeyPair(BigInteger.valueOf(80));
+  private final KeyPair deployerKey = new KeyPair(BigInteger.valueOf(80));
   private BlockchainAddress owner;
-  private BlockchainAddress sender;
+  private BlockchainAddress deployer;
+  private BlockchainAddress signingUser;
   private BlockchainAddress contractAddress;
 
   /**
@@ -92,11 +93,11 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   /** Can sign a message. */
   @ContractTest(previous = "setup")
   void sign() {
-    byte[] message = "hello world".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    String message = "hello world";
+    sendSignMessage(message);
 
     assertThat(getState().signingComputationState().signingInformation().get(1).requestingAddress())
-        .isEqualTo(sender);
+        .isEqualTo(signingUser);
     verifyValidSignature(1, message);
   }
 
@@ -111,18 +112,16 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     engines.get(1).stop();
     engines.get(2).stop();
     for (int i = 1; i < 12; i++) {
-      byte[] message = ("hello world " + i).getBytes(StandardCharsets.UTF_8);
-      blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+      sendSignMessage("hello world " + i);
     }
     List<TxExecution> txExecutions = engines.get(1).runOffChainStateChange(contractAddress);
     assertThat(txExecutions).hasSize(1);
     assertThat(txExecutions.get(0).getSpawnedEvents().get(0).getSpawnedEvents()).hasSize(10);
     for (int i = 1; i < 11; i++) {
-      byte[] message = ("hello world " + i).getBytes(StandardCharsets.UTF_8);
       assertThat(
               getState().signingComputationState().signingInformation().get(i).requestingAddress())
-          .isEqualTo(sender);
-      verifyValidSignature(i, message);
+          .isEqualTo(signingUser);
+      verifyValidSignature(i, "hello world " + i);
     }
   }
 
@@ -132,8 +131,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     for (int i = 0; i < engines.size(); i++) {
       engines.get(i).stop();
       int signingId = i + 1;
-      byte[] message = "Sign with two engines".getBytes(StandardCharsets.UTF_8);
-      blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+      String message = "Sign with two engines";
+      sendSignMessage(message);
 
       assertThat(
               getState()
@@ -141,7 +140,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
                   .signingInformation()
                   .get(signingId)
                   .requestingAddress())
-          .isEqualTo(sender);
+          .isEqualTo(signingUser);
       verifyValidSignature(signingId, message);
       engines.get(i).resume();
     }
@@ -155,8 +154,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   void signNodeSendsIncorrectShareUnableToOpen() {
     engines.get(1).stop();
     engines.get(2).stop();
-    byte[] message = "Sign with incorrect share".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    String message = "Sign with incorrect share";
+    sendSignMessage(message);
 
     int signingId = 1;
     blockchain.sendAction(
@@ -197,8 +196,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   void signNodeSendsIncorrectShareUnableToVerify() {
     engines.get(1).stop();
     engines.get(2).stop();
-    byte[] message = "Sign with incorrect share".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    String message = "Sign with incorrect share";
+    sendSignMessage(message);
 
     int signingId = 1;
     OffChainMpcSigning.ContractState state = getState();
@@ -243,8 +242,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   @ContractTest(previous = "setupWithoutPreprocessing")
   void failToOpenPreprocessingPrep() {
     engines.get(2).stop();
-    byte[] message = "Sign to start preprocessing".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    sendSignMessage("Sign to start preprocessing");
     int signingId = 1;
     BigInteger zero = BigInteger.ZERO;
 
@@ -276,8 +274,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   @ContractTest(previous = "setupWithoutPreprocessing")
   void failToOpenPreprocessingMulCheckRand() {
     engines.get(2).stop();
-    byte[] message = "Sign to start preprocessing".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    sendSignMessage("Sign to start preprocessing");
     int signingId = 1;
     BigInteger zero = BigInteger.ZERO;
 
@@ -303,8 +300,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   @ContractTest(previous = "setupWithoutPreprocessing")
   void failToOpenPreprocessingMulCheckEpsilon() {
     engines.get(2).stop();
-    byte[] message = "Sign to start preprocessing".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    sendSignMessage("Sign to start preprocessing");
     int signingId = 1;
     BigInteger zero = BigInteger.ZERO;
 
@@ -338,8 +334,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   @ContractTest(previous = "setupWithoutPreprocessing")
   void failsMulCheck() {
     engines.get(2).stop();
-    byte[] message = "Sign to start preprocessing".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    sendSignMessage("Sign to start preprocessing");
     int signingId = 1;
 
     engines.get(2).runOffChainStateChange(contractAddress);
@@ -376,8 +371,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
             state.signingComputationState().preprocessState().createdOrQueuedPreprocessMaterial())
         .isEqualTo(10);
 
-    byte[] message = "after reset".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    String message = "after reset";
+    sendSignMessage(message);
     verifyValidSignature(1, message);
     state = getState();
     assertThat(
@@ -391,16 +386,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   @ContractTest(previous = "setupWithoutPreprocessing")
   void resetPreprocessingCancelsQueues() {
     engines.get(0).stop();
-    blockchain.sendAction(
-        sender,
-        contractAddress,
-        OffChainMpcSigning.signMessage(
-            "not succeeding message 1".getBytes(StandardCharsets.UTF_8)));
-    blockchain.sendAction(
-        sender,
-        contractAddress,
-        OffChainMpcSigning.signMessage(
-            "not succeeding message 2".getBytes(StandardCharsets.UTF_8)));
+    sendSignMessage("not succeeding message 1");
+    sendSignMessage("not succeeding message 2");
     OffChainMpcSigning.ContractState state = getState();
     assertThat(state.signingComputationState().signQueue().queue().size()).isEqualTo(2);
     assertThat(state.signingComputationState().prePrepCheckQueue().queue().size()).isEqualTo(2);
@@ -417,8 +404,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
 
     engines.get(0).resume();
 
-    byte[] message = "after reset".getBytes(StandardCharsets.UTF_8);
-    blockchain.sendAction(sender, contractAddress, OffChainMpcSigning.signMessage(message));
+    String message = "after reset";
+    sendSignMessage(message);
     verifyValidSignature(3, message);
     state = getState();
     assertThat(
@@ -432,20 +419,20 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     assertThatThrownBy(
             () ->
                 blockchain.sendAction(
-                    sender, contractAddress, OffChainMpcSigning.resetPreprocessing()))
+                    deployer, contractAddress, OffChainMpcSigning.resetPreprocessing()))
         .hasMessageContaining("Only the owner can reset the contract");
   }
 
   /** The contract must be initialized with three nodes. */
   @ContractTest
   void wrongNumberNodes() {
-    sender = blockchain.newAccount(senderKey);
+    deployer = blockchain.newAccount(deployerKey);
     engineConfigs = createEngineConfigs(blockchain);
 
     byte[] initPayload =
         OffChainMpcSigning.initialize(
-            engineConfigs.subList(0, 2), new OffChainMpcSigning.PreprocessConfig(0, 1));
-    assertThatThrownBy(() -> blockchain.deployContract(sender, CONTRACT_BYTES, initPayload))
+            engineConfigs.subList(0, 2), new OffChainMpcSigning.PreprocessConfig(0, 1), List.of());
+    assertThatThrownBy(() -> blockchain.deployContract(deployer, CONTRACT_BYTES, initPayload))
         .hasMessageContaining("Expected 3 engines. Got 2.");
   }
 
@@ -515,11 +502,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   /** Cannot sign a message before the engines have generated the public key. */
   @ContractTest(previous = "setupWithoutEngines")
   void cantSignBeforePublicKey() {
-    byte[] message = "message before public key".getBytes(StandardCharsets.UTF_8);
-    assertThatThrownBy(
-            () ->
-                blockchain.sendAction(
-                    sender, contractAddress, OffChainMpcSigning.signMessage(message)))
+    assertThatThrownBy(() -> sendSignMessage("message before public key"))
         .hasMessageContaining("Unable to sign. Engines haven't finished generating the key.");
   }
 
@@ -573,12 +556,14 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     assertThatThrownBy(
             () ->
                 blockchain.sendAction(
-                    sender, contractAddress, OffChainMpcSigning.uploadEnginePubKey(taskId, pubKey)))
+                    deployer,
+                    contractAddress,
+                    OffChainMpcSigning.uploadEnginePubKey(taskId, pubKey)))
         .hasMessageContaining("Caller is not one of the engines");
     assertThatThrownBy(
             () ->
                 blockchain.sendAction(
-                    sender,
+                    deployer,
                     contractAddress,
                     OffChainMpcSigning.uploadPubKeyShare(
                         taskId,
@@ -590,14 +575,14 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     byte[] prePrepRpc =
         OffChainMpcSigning.prePrepCheckReport(
             taskId, new OffChainMpcSigning.TaskPrePrepCheckCompletion(List.of()));
-    assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, prePrepRpc))
+    assertThatThrownBy(() -> blockchain.sendAction(deployer, contractAddress, prePrepRpc))
         .hasMessageContaining("Caller is not one of the engines");
     byte[] prepRpc =
         OffChainMpcSigning.prepReport(
             taskId,
             new OffChainMpcSigning.TaskPrepCompletion(
                 List.of(), List.of(), List.of(), List.of(), List.of()));
-    assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, prepRpc))
+    assertThatThrownBy(() -> blockchain.sendAction(deployer, contractAddress, prepRpc))
         .hasMessageContaining("Caller is not one of the engines");
     byte[] mulCheckOneRpc =
         OffChainMpcSigning.mulCheckOneReport(
@@ -607,12 +592,12 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
                     List.of(BigInteger.ZERO, BigInteger.ZERO)),
                 new OffChainMpcSigning.ReplicatedSecretShareU256(
                     List.of(BigInteger.ZERO, BigInteger.ZERO))));
-    assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, mulCheckOneRpc))
+    assertThatThrownBy(() -> blockchain.sendAction(deployer, contractAddress, mulCheckOneRpc))
         .hasMessageContaining("Caller is not one of the engines");
     byte[] mulCheckTwoRpc =
         OffChainMpcSigning.mulCheckTwoReport(
             taskId, new OffChainMpcSigning.TaskMulCheckTwoCompletion(BigInteger.ZERO));
-    assertThatThrownBy(() -> blockchain.sendAction(sender, contractAddress, mulCheckTwoRpc))
+    assertThatThrownBy(() -> blockchain.sendAction(deployer, contractAddress, mulCheckTwoRpc))
         .hasMessageContaining("Caller is not one of the engines");
   }
 
@@ -660,18 +645,42 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
         .hasMessageContaining("Can only be called by the contract itself");
   }
 
+  /**
+   * Only users registered as signing users can get their messages signed. If a non-signing user
+   * sends a message the request fails.
+   */
+  @ContractTest(previous = "setup")
+  void signingUserRequired() {
+    List<BlockchainAddress> invalidSignerUsers =
+        List.of(
+            owner,
+            deployer,
+            ENGINE_KEYS.get(0).getPublic().createAddress(),
+            ENGINE_KEYS.get(1).getPublic().createAddress(),
+            ENGINE_KEYS.get(2).getPublic().createAddress(),
+            blockchain.newAccount(1337));
+
+    for (final BlockchainAddress invalidUser : invalidSignerUsers) {
+      assertThatThrownBy(() -> sendSignMessage(invalidUser, "Test"))
+          .hasMessageContaining("Not a signing user");
+    }
+  }
+
   private void deployContract(int numToPreprocess, int batchSize) {
     owner = blockchain.newAccount(ownerKey);
-    sender = blockchain.newAccount(senderKey);
+    deployer = blockchain.newAccount(deployerKey);
+    signingUser = blockchain.newAccount(123);
     engineConfigs = createEngineConfigs(blockchain);
 
     byte[] initPayload =
         OffChainMpcSigning.initialize(
-            engineConfigs, new OffChainMpcSigning.PreprocessConfig(numToPreprocess, batchSize));
+            engineConfigs,
+            new OffChainMpcSigning.PreprocessConfig(numToPreprocess, batchSize),
+            List.of(signingUser));
     contractAddress = blockchain.deployContract(owner, CONTRACT_BYTES, initPayload);
   }
 
-  private void verifyValidSignature(int signingId, byte[] message) {
+  private void verifyValidSignature(int signingId, String message) {
     OffChainMpcSigning.ContractState state = getState();
 
     OffChainMpcSigning.SigningInformation signingInformation =
@@ -680,7 +689,8 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
     Signature signature = signingInformation.signature();
     assertThat(signature).isNotNull();
 
-    Hash messageHash = Hash.create(stream -> stream.write(message));
+    byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+    Hash messageHash = Hash.create(stream -> stream.write(messageBytes));
     BlockchainPublicKey publicKey = state.signingComputationState().publicKey();
 
     assertThat(signature.recoverPublicKey(messageHash)).isEqualTo(publicKey);
@@ -698,7 +708,9 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
 
   private void assertGeneratedSigningKey() {
     OffChainMpcSigning.ContractState state = getState();
-    assertThat(state.signingComputationState().publicKey()).isNotNull();
+    assertThat(state.signingComputationState().publicKey())
+        .as("public key must have been generated")
+        .isNotNull();
 
     OffChainMpcSigning.ReplicatedSecretShareU256 secretShare0 = getSecretFromEngineStorage(0);
     OffChainMpcSigning.ReplicatedSecretShareU256 secretShare1 = getSecretFromEngineStorage(1);
@@ -753,7 +765,7 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
   }
 
   private void pingContract() {
-    blockchain.sendAction(sender, contractAddress, new byte[0]);
+    blockchain.sendAction(deployer, contractAddress, new byte[0]);
   }
 
   private OffChainMpcSigning.ReplicatedSecretShareU256 getSecretFromEngineStorage(int engineIndex) {
@@ -770,5 +782,27 @@ public final class OffChainMpcSigningTest extends JunitContractTest {
 
   private OffChainMpcSigning.ContractState getState() {
     return new OffChainMpcSigning(getStateClient(), contractAddress).getState();
+  }
+
+  /**
+   * Send invocation requesting creation of a signature from a {@link #signingUser}.
+   *
+   * @param message Message to sign.
+   */
+  private void sendSignMessage(String message) {
+    sendSignMessage(signingUser, message);
+  }
+
+  /**
+   * Send invocation requesting creation of a signature.
+   *
+   * @param sender Sender of the invocation.
+   * @param message Message to sign.
+   */
+  private void sendSignMessage(BlockchainAddress sender, String message) {
+    blockchain.sendAction(
+        sender,
+        contractAddress,
+        OffChainMpcSigning.signMessage(message.getBytes(StandardCharsets.UTF_8)));
   }
 }

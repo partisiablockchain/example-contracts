@@ -1,11 +1,11 @@
 {
   "name": "@partisiablockchain/example-contracts",
-  "version": "5.617.0",
+  "version": "5.653.0",
   "description": "",
   "license": "AGPL-3.0",
   "dependencies": {
-    "@partisiablockchain/blockchain-api-transaction-client": "6.71.0",
-    "@partisiablockchain/abi-client": "6.93.0",
+    "@partisiablockchain/blockchain-api-transaction-client": "6.99.0",
+    "@partisiablockchain/abi-client": "6.130.0",
     "@types/bn.js": "^5.1.6",
     "@types/elliptic": "^6.4.18",
     "@secata-public/bitmanipulation-ts": "3.4.0",
