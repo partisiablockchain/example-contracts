@@ -81,6 +81,12 @@ contract waits until the third engine has responded, at which point the signatur
 
 Each signing request can be completed by having each engine send a single transaction.
 
+#### Authentication
+
+The signing request invocation uses a basic authentication system, where only
+accounts that have been configured during initialization may request
+a signature on a message. This prevents anybody from requesting signatures.
+
 ## Secret sharing scheme
 
 The secret sharing scheme of the contract is the 1-out-of-3 Replicated Secret-Sharing Scheme.
@@ -114,3 +120,25 @@ node to manipulate the preprocessing results ends in failure.
 
 The security guarantees break down completely if 2 or more nodes are
 malicious.
+
+## Example use case: Decentralized Autonomous Organization
+
+An interesting use case for MPC signing is as an signing system for
+a Decentralized Autonomous Organization (DAO) that wants to transfer their
+decisions to external systems, such as an Web 2.0 API or a different
+blockchain. In this case the DAO can establish a contract constellation such
+as:
+
+```mermaid
+flowchart TD
+    A[Voting Contract] -->|Vote Result| B[MPC Signing]
+    B e1@-->|Signed Vote Result| C([Web 2.0 API])
+    B e2@-->|Signed Vote Result| D([External Blockchain])
+    e1@{ animation: slow }
+    e2@{ animation: slow }
+```
+
+Signed vote results can be validated by these external systems, simply by
+knowing the public key of the MPC signing contract (which acts as the public
+key of the DAO), and without having to know anything about the originating
+blockchain or smart contract.

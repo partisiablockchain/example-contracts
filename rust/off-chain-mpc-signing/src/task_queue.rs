@@ -244,9 +244,11 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
     ) where
         RpcGeneratorT: FnOnce(TaskId, CompletionT) -> Vec<u8>,
     {
-        let rpc = rpc_generator(task.id(), completion);
-        let gas_for_network = gas_for_network(rpc.len());
-        context.send_transaction_to_contract(rpc, gas_for_network + gas_for_cpu);
+        context
+            .call_contract(rpc_generator(task.id(), completion))
+            .with_transport_fee_from_rpc()
+            .with_additional_gas(gas_for_cpu)
+            .send();
 
         self.completion_status_storage(context)
             .insert(task.id(), task.id());
@@ -278,8 +280,11 @@ impl<DefinitionT: ReadWriteState, CompletionT: WriteRPC + ReadWriteState + Clone
                 .map(|(task, comp)| WithId::new(task.id, comp))
                 .collect(),
         );
-        let gas_for_network = gas_for_network(rpc.len());
-        context.send_transaction_to_contract(rpc, gas_for_network + gas_for_cpu);
+        context
+            .call_contract(rpc)
+            .with_transport_fee_from_rpc()
+            .with_additional_gas(gas_for_cpu)
+            .send();
 
         for task_id in task_ids {
             self.completion_status_storage(context)
@@ -345,12 +350,6 @@ impl<T> WithId<T> {
     pub fn new(id: TaskId, value: T) -> Self {
         Self { id, value }
     }
-}
-
-/// Calculate the network cost for sending a signed transaction plus creating an interact with
-/// contract event, based on the length of rpc.
-fn gas_for_network(rpc_length: usize) -> u64 {
-    700 + 10 * rpc_length as u64
 }
 
 /// Tests for [`TaskQueue`].

@@ -156,7 +156,7 @@ pub enum SigningStatus {
 /// Information about a signing request.
 #[derive(ReadWriteState, CreateTypeSpec)]
 pub struct SigningInformation {
-    /// The address that created the signing request.
+    /// The address that created the signing request. Used solely for identification.
     requesting_address: Address,
     /// The hash of the message to be signed
     message_hash: Hash,

@@ -8,6 +8,7 @@ extern crate pbc_contract_common;
 
 use create_type_spec_derive::CreateTypeSpec;
 use pbc_contract_common::address::Address;
+use pbc_contract_common::avl_tree_map::AvlTreeSet;
 use pbc_contract_common::context::ContractContext;
 use read_write_rpc_derive::ReadWriteRPC;
 use read_write_state_derive::ReadWriteState;
@@ -43,7 +44,10 @@ pub struct ContractState {
     pub(crate) owner: Address,
     /// Engine configurations
     pub(crate) engines: Vec<EngineConfig>,
+    /// State of the signing computations.
     pub(crate) signing_computation_state: SigningComputationState,
+    /// Set of users that are allowed to request message signatures.
+    pub(crate) signing_users: AvlTreeSet<Address>,
 }
 
 impl ContractState {
@@ -67,11 +71,14 @@ impl ContractState {
 /// ## RPC Arguments
 ///
 /// - `engines`: Configurations for all engines that serve the contract.
+/// - `preprocess_config`: Configuration of the pre-processing phase.
+/// - `signing_users`: Set of accounts that may request signing of a message.
 #[init]
 pub fn initialize(
     ctx: ContractContext,
     engines: Vec<EngineConfig>,
     preprocess_config: PreprocessConfig,
+    signing_users: Vec<Address>,
 ) -> ContractState {
     if engines.len() != NUM_ENGINES as usize {
         panic!("Expected {} engines. Got {}.", NUM_ENGINES, engines.len());
@@ -80,11 +87,14 @@ pub fn initialize(
         owner: ctx.sender,
         engines,
         signing_computation_state: SigningComputationState::new(preprocess_config),
+        signing_users: signing_users.into_iter().collect(),
     }
 }
 
 /// Request a message to be signed in MPC by the allocated execution engines. The signature will
 /// be placed in the state once finished.
+///
+/// Only accounts present in the [`ContractState::signing_users`] field may call this invocation.
 ///
 /// ## RPC Arguments
 ///
@@ -95,6 +105,10 @@ pub fn sign_message(
     mut state: ContractState,
     message: Vec<u8>,
 ) -> ContractState {
+    assert!(
+        state.signing_users.contains(&ctx.sender),
+        "Not a signing user"
+    );
     state
         .signing_computation_state
         .sign_message(message, ctx.sender, ctx.current_transaction);

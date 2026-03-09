@@ -573,7 +573,10 @@ fn http_sharing_put(
     )?;
 
     storage.insert(sharing_id, secret_share);
-    ctx.send_transaction_to_contract(register_shared::rpc(sharing_id), 1200);
+    ctx.call_contract(register_shared::rpc(sharing_id))
+        .with_transport_fee_from_rpc()
+        .with_additional_gas(350)
+        .send();
     Ok(HttpResponseData::new_with_str(201, ""))
 }
 
@@ -657,10 +660,10 @@ fn on_state_change(mut ctx: OffChainContext, state: ContractState) {
             secret_share_storage(&mut ctx);
         if storage.get(&sharing_id).is_some() {
             storage.remove(&sharing_id);
-
-            let payload = register_deleted::rpc(sharing_id);
-
-            ctx.send_transaction_to_contract(payload, 2400);
+            ctx.call_contract(register_deleted::rpc(sharing_id))
+                .with_transport_fee_from_rpc()
+                .with_additional_gas(440)
+                .send();
         }
     }
 }
